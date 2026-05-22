@@ -1,4 +1,5 @@
 import re
+import sys
 import time
 from typing import List, Optional, Set
 
@@ -16,7 +17,7 @@ USER_AGENT = (
 # 重試設定：總嘗試次數與 backoff 起始秒數（指數倍增）
 # Retry config: total attempts and initial backoff seconds (exponential)
 MAX_ATTEMPTS = 3
-BACKOFF_BASE = 2.0
+BACKOFF_BASE = 3.0
 PRICE_RE = re.compile(r"\$(\d[\d,]*)")
 # 備註標記正面表列：含外圍符號的整段 pattern，需要新增時在此列表添加即可
 # Remark patterns whitelist (with delimiters) — add new patterns here as needed
@@ -33,6 +34,20 @@ REMARK_RE = re.compile("|".join(REMARK_PATTERNS))
 # 提取 tag 文字時要去掉的外圍符號 / Delimiter chars to strip when extracting tag text
 REMARK_DELIMS = "~【】[]"
 SELECT_NAME_RE = re.compile(r"^n(\d+)$")
+# 正常頁面第一個 select 的 name 屬性為 n1（原價屋採無引號 attribute，全大寫 SELECT 標籤）
+# 缺少此子字串視為內容失敗（維護頁/挑戰頁等）
+# Healthy pages contain `name=n1` (CoolPC uses unquoted attributes + uppercase SELECT tags);
+# missing this substring means bad content (maintenance page / bot challenge / etc.)
+CONTENT_SENTINEL = "name=n1"
+
+
+class EmptyContentError(Exception):
+    """HTTP 成功但 HTML 缺少預期結構（例如維護頁、反爬蟲挑戰頁）。
+    HTTP succeeded but HTML lacks expected structure (e.g. maintenance / bot-challenge page)."""
+
+    def __init__(self, html: str):
+        super().__init__("Response missing expected <select> structure")
+        self.html = html
 
 
 def fetch_page() -> str:
@@ -44,14 +59,20 @@ def fetch_page() -> str:
             resp = requests.get(URL, headers={"User-Agent": USER_AGENT}, timeout=30)
             resp.raise_for_status()
             resp.encoding = "big5hkscs"
-            return resp.text
-        except requests.RequestException as exc:
+            text = resp.text
+            if CONTENT_SENTINEL not in text:
+                raise EmptyContentError(text)
+            return text
+        except (requests.RequestException, EmptyContentError) as exc:
             last_exc = exc
             if attempt < MAX_ATTEMPTS:
-                # 指數 backoff：2s, 4s, ...
+                # 指數 backoff：3s, 9s, ...
                 # Exponential backoff
                 wait = BACKOFF_BASE ** attempt
-                print(f"Fetch attempt {attempt} failed: {exc}. Retrying in {wait:.1f}s...")
+                print(
+                    f"Fetch attempt {attempt} failed: {exc}. Retrying in {wait:.1f}s...",
+                    file=sys.stderr,
+                )
                 time.sleep(wait)
     # 所有嘗試皆失敗，重新拋出最後一次的例外 / All attempts failed, re-raise the last exception
     assert last_exc is not None
@@ -93,6 +114,7 @@ def parse_products(
             continue
 
         # 從 td 的 parent 找 select (因為 HTML 結構破碎，select 可能在同層)
+        # Search for <select> from td's parent (HTML is malformed, select may be at the same level)
         parent = td.parent
         if not parent:
             continue
@@ -108,7 +130,7 @@ def parse_products(
 
         # 遍歷 optgroup → option
         for optgroup in select.find_all("optgroup"):
-            subcategory = optgroup.get("label", "").strip()
+            subcategory = str(optgroup.get("label", "")).strip()
             if not subcategory:
                 continue
 

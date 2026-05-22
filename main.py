@@ -1,24 +1,60 @@
 import argparse
 import csv
 import json
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
 from crawler.models import get_category_filter
-from crawler.scraper import fetch_page, parse_products
+from crawler.scraper import EmptyContentError, fetch_page, parse_products
+
+
+def _dump_debug_html(html: str, now: datetime) -> Path:
+    """將失敗頁面寫入 output/debug/ 以便事後分析。
+    Dump failing HTML into output/debug/ for post-mortem inspection."""
+    debug_dir = Path("output/debug")
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    debug_path = debug_dir / f"coolpc_{timestamp}.html"
+    debug_path.write_text(html, encoding="utf-8")
+    return debug_path
+
+
+def _signal_failure() -> None:
+    """寫 status=failed 給 GitHub Actions step output（若不在 Action 內則 no-op）。
+    Write status=failed to GitHub Actions step output (no-op outside Actions)."""
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as f:
+            f.write("status=failed\n")
 
 
 def crawl(args):
     # 抓取原價屋估價單資料 Fetch CoolPC estimate page data
     print("Fetching CoolPC data...")
-    html = fetch_page()
+    now = datetime.now()
+    try:
+        html = fetch_page()
+    except EmptyContentError as exc:
+        # HTTP 成功但內容不對（維護頁/挑戰頁等）：dump HTML、發失敗訊號、綠燈退出
+        # HTTP ok but bad content: dump HTML, signal failure, exit green
+        debug_path = _dump_debug_html(exc.html, now)
+        print(f"ERROR: {exc}. Dumped to {debug_path}", file=sys.stderr)
+        _signal_failure()
+        return
+
     category_filter = get_category_filter(fetch_all=args.all)
     products = parse_products(html, category_filter)
     print(f"Total products: {len(products)}")
 
-    # 統一時間戳，確保檔名與資料一致
-    # Single timestamp for both filename and CSV data consistency
-    now = datetime.now()
+    if not products:
+        # 結構通過 sentinel 但解析出 0 筆：可能是 HTML 改版或解析 bug
+        # Passed sentinel but parsed nothing: possible site change or parser bug
+        debug_path = _dump_debug_html(html, now)
+        print(f"ERROR: parsed 0 products. Dumped to {debug_path}", file=sys.stderr)
+        _signal_failure()
+        return
 
     # 決定輸出路徑 Determine output path
     if args.output:
@@ -46,9 +82,9 @@ def crawl(args):
         update_crawl_history(output_path.name, mode)
 
 
-def update_crawl_history(new_file, new_mode):
-    """Append new entry to docs/crawl_history.json and sync with output/ directory.
-    將新紀錄加入爬取歷史 JSON，並同步 output/ 目錄狀態"""
+def update_crawl_history(filename, mode):
+    """將新紀錄加入爬取歷史 JSON，並同步 output/ 目錄狀態。
+    Append new entry to docs/crawl_history.json and sync with output/ directory."""
     docs_dir = Path("docs")
     docs_dir.mkdir(exist_ok=True)
     history_path = docs_dir / "crawl_history.json"
@@ -62,7 +98,7 @@ def update_crawl_history(new_file, new_mode):
         }
 
     # 加入本次爬取紀錄 Add current crawl entry
-    existing[new_file] = new_mode
+    existing[filename] = mode
 
     # 比對 output/ 實際檔案，移除已刪除的紀錄
     # Sync with actual files in output/, remove deleted entries

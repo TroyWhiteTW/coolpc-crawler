@@ -74,6 +74,7 @@ jobs:
           echo "label=$LABEL" >> "$GITHUB_OUTPUT"
 
       - name: Run crawler
+        id: crawler
         run: uv run python main.py crawl ${{ steps.mode.outputs.flag }}
 
       - name: Commit and push
@@ -81,6 +82,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add output/ docs/crawl_history.json
+          # commit 訊息前綴：crawler 自我回報失敗時改成 crawl-fail
+          # Commit prefix: switch to crawl-fail when crawler self-reports failure
+          if [ "${{ steps.crawler.outputs.status }}" = "failed" ]; then
+            PREFIX="crawl-fail"
+          else
+            PREFIX="crawl"
+          fi
           # 排程時間 + 實際執行時間 / Scheduled time + actual execution time
           SCHEDULED="${{ github.event.schedule }}"
           ACTUAL=$(date '+%Y-%m-%d %H:%M')
@@ -90,9 +98,9 @@ jobs:
             CRON_HOUR=$(echo "$SCHEDULED" | awk '{print $2}')
             TW_HOUR=$(( (CRON_HOUR + 8) % 24 ))
             CRON_TW=$(printf "%02d:%02d" "$TW_HOUR" "$CRON_MIN")
-            MSG="crawl: (cron ${CRON_TW}) ${ACTUAL} ${{ steps.mode.outputs.label }}"
+            MSG="${PREFIX}: (cron ${CRON_TW}) ${ACTUAL} ${{ steps.mode.outputs.label }}"
           else
-            MSG="crawl: ${ACTUAL} ${{ steps.mode.outputs.label }}"
+            MSG="${PREFIX}: ${ACTUAL} ${{ steps.mode.outputs.label }}"
           fi
           git diff --cached --quiet || git commit -m "$MSG"
           git push
