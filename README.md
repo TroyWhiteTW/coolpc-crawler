@@ -114,6 +114,7 @@ debug HTML 位置：`output/debug/coolpc_YYYYMMDD_HHMMSS.html`（時間戳對齊
 ## 已知問題
 
 1. 舊價格（A 側）預設選擇當月第 6 筆資料，若當月不足 6 筆則選最後一筆，不會自動回推至前一個月
+2. **商品名稱微調會被誤判為新增/下架** — 對比頁面以商品名稱完整字串作為比對 key（`docs/app.js` 的 `mapA`/`mapB`），若原價屋微調名稱（如 `WIN11 PRO` → `WIN11 Pro`、空格數量、全形/半形變動），同一個商品會被拆成一筆 ✕ 下架 + 一筆 ✦ 新增。crawler 忠實記錄原文不做正規化，這類雜訊只能在閱讀對比結果時自行辨識。
 
 ## License
 
@@ -233,6 +234,7 @@ A static price comparison page is served via GitHub Pages, allowing you to compa
 ## Known Issues
 
 1. The old price (A side) defaults to the 6th entry of the current month; if fewer than 6 entries exist, it picks the last one without rolling back to the previous month
+2. **Cosmetic name changes are misdetected as add/remove pairs** — The comparison page uses the full product name string as the join key (`mapA`/`mapB` in `docs/app.js`). When CoolPC tweaks a name (e.g. `WIN11 PRO` → `WIN11 Pro`, whitespace differences, full-width vs half-width punctuation), the same product splits into one ✕ removed + one ✦ new row. The crawler stores the raw text without normalization, so this noise has to be recognized by eye when reading diffs.
 
 ## License
 
