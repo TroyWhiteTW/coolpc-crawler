@@ -5,6 +5,9 @@ let showAll = true;
 let compareResults = [];
 let historyEntries = [];
 
+// 檔名→模式對照表 Filename to mode lookup
+const modeMap = new Map();
+
 // 按年月索引的資料結構 Indexed by year → month → entries
 // { "2026": { "04": [{file, mode, day, time}, ...], ... }, ... }
 let indexedData = {};
@@ -172,9 +175,6 @@ function getSelectedFile(side) {
   return selectors[side].entry.value;
 }
 
-// 檔名→模式對照表 Filename to mode lookup
-const modeMap = new Map();
-
 function getMode(filename) {
   return modeMap.get(filename) || 'MAIN';
 }
@@ -268,8 +268,8 @@ function buildComparison(fileA, fileB) {
   if (excludedCats.size > 0) {
     modeNotice.style.display = 'block';
     modeNotice.innerHTML =
-      '<div class="mode-notice-inner">⚠ 舊(A) 為 ' + modeA + ' 模式，新(B) 為 ' + modeB +
-      ' 模式，已自動排除非共同分類（' + [...excludedCats].join('、') +
+      '<div class="mode-notice-inner">⚠ 舊(A) 為 ' + escapeHtml(modeA) + ' 模式，新(B) 為 ' + escapeHtml(modeB) +
+      ' 模式，已自動排除非共同分類（' + [...excludedCats].map(escapeHtml).join('、') +
       '），僅比較共同存在的 ' + sharedCats.size + ' 個分類。</div>';
   } else {
     modeNotice.style.display = 'none';

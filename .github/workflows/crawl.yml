@@ -2,13 +2,13 @@ name: Scheduled Crawl
 
 on:
   schedule:
-    # UTC 時間（台灣 UTC+8）：07:00, 11:00, 15:00, 19:00, 23:00
-    # UTC times (Taiwan UTC+8): 07:00, 11:00, 15:00, 19:00, 23:00
-    - cron: '5 23 * * *'
-    - cron: '5 3 * * *'
-    - cron: '5 7 * * *'
-    - cron: '5 11 * * *'
-    - cron: '5 15 * * *'
+    # cron 一律為 UTC；行末註解標示對應的台灣時間 (UTC+8) 與爬取模式
+    # Cron is always UTC; trailing comments show the matching Taiwan time (UTC+8) and mode
+    - cron: '5 23 * * *'  # TW 07:05 ALL
+    - cron: '5 3 * * *'   # TW 11:05 MAIN
+    - cron: '5 7 * * *'   # TW 15:05 ALL
+    - cron: '5 11 * * *'  # TW 19:05 MAIN
+    - cron: '5 15 * * *'  # TW 23:05 ALL
   workflow_dispatch:
     inputs:
       mode:
@@ -44,13 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
+      # uv 依 .python-version (pypy@3.9) 自行下載解譯器並建立 venv，
+      # 故不需 actions/setup-python（先前裝的 CPython 完全沒被用到，純屬空轉）
+      # uv downloads the interpreter per .python-version (pypy@3.9) and creates the venv itself,
+      # so actions/setup-python is unnecessary (the CPython it installed was never used)
       - name: Install dependencies
         run: uv sync
 

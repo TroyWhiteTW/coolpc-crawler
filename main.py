@@ -9,15 +9,27 @@ from pathlib import Path
 from crawler.models import get_category_filter
 from crawler.scraper import EmptyContentError, fetch_page, parse_products
 
+# output/debug/ 保留的失敗頁面份數 / Number of failure dumps kept in output/debug/
+DEBUG_KEEP = 10
+
 
 def _dump_debug_html(html: str, now: datetime) -> Path:
-    """將失敗頁面寫入 output/debug/ 以便事後分析。
-    Dump failing HTML into output/debug/ for post-mortem inspection."""
+    """將失敗頁面寫入 output/debug/ 以便事後分析，僅保留最近 DEBUG_KEEP 份。
+    Dump failing HTML into output/debug/ for post-mortem inspection, keeping the
+    most recent DEBUG_KEEP files."""
     debug_dir = Path("output/debug")
     debug_dir.mkdir(parents=True, exist_ok=True)
     timestamp = now.strftime("%Y%m%d_%H%M%S")
     debug_path = debug_dir / f"coolpc_{timestamp}.html"
     debug_path.write_text(html, encoding="utf-8")
+
+    # 連續失敗時每次約 1MB，若不回收會撐大 repo；檔名含時間戳故可直接字典序排序
+    # ~1MB each on repeated failures; filenames are timestamped so lexical sort == chronological
+    dumps = sorted(debug_dir.glob("coolpc_*.html"), reverse=True)
+    for stale in dumps[DEBUG_KEEP:]:
+        stale.unlink()
+        print(f"Pruned old debug dump: {stale}")
+
     return debug_path
 
 
