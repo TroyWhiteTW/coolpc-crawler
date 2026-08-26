@@ -110,10 +110,13 @@ summary:focus-visible {
   text-decoration: underline;
 }
 
-/* ── 導言 Intro copy ── */
+/* ── 導言 Intro copy ──
+   行寬與下方表格切齊（由 .page-main 的 1400px 容器決定），不另設 max-width。
+   行變長後眼睛回到行首較容易跳行，因此把行高一併調高補償。
+   Intro text spans the same width as the tables below (bounded by .page-main's 1400px
+   container). Longer lines are harder to track back to, so line-height goes up. */
 .page-intro {
   margin-bottom: 32px;
-  max-width: 76ch;
 }
 
 .page-intro h1 {
@@ -127,14 +130,14 @@ summary:focus-visible {
 
 .page-intro p {
   font-size: 14.5px;
-  line-height: 1.75;
+  line-height: 1.9;
   color: var(--text-secondary);
   margin-bottom: 10px;
 }
 
 .page-intro .lede {
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.85;
   color: var(--text);
 }
 
@@ -173,9 +176,8 @@ summary:focus-visible {
 
 .tool-intro p {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.85;
   color: var(--text-secondary);
-  max-width: 76ch;
 }
 
 /* ── 區段標題 Section headings ── */
