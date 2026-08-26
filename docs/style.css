@@ -513,11 +513,14 @@ body {
   z-index: 10;
 }
 
-.compare-table th {
+/* 僅限表頭。靜態頁的商品名稱用 <th scope="row">，不可繼承大寫與表頭底色
+   Header cells only. Static pages use <th scope="row"> for product names, which must
+   not inherit the uppercase transform or the header background */
+.compare-table thead th {
   background: #0f1525;
   border-bottom: 2px solid var(--border);
   border-right: 1px solid var(--border);
-  padding: 6px 12px;
+  padding: 7px 12px;
   text-align: center;
   font-size: 11px;
   font-weight: 600;
@@ -527,8 +530,20 @@ body {
   white-space: nowrap;
 }
 
-.compare-table th:last-child {
+.compare-table thead th:last-child {
   border-right: none;
+}
+
+/* 數值欄的表頭跟著內容靠右，避免標題置中、數字靠右的錯位
+   Numeric headers align right with their cells */
+.compare-table thead .th-price,
+.compare-table thead .th-diff,
+.compare-table thead .th-pct {
+  text-align: right;
+}
+
+.compare-table thead .th-name {
+  text-align: left;
 }
 
 /* 欄位寬度 Column widths — auto layout, only constrain non-text columns */
@@ -539,14 +554,18 @@ body {
 .th-pct { white-space: nowrap; }
 .th-status { white-space: nowrap; }
 
-.compare-table td {
-  padding: 6px 12px;
+/* tbody 的 th（商品名稱）與 td 共用儲存格樣式
+   Row-header cells share the data-cell styling */
+.compare-table td,
+.compare-table tbody th {
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border-light);
   border-right: 1px solid var(--border-light);
   vertical-align: middle;
 }
 
-.compare-table td:last-child {
+.compare-table td:last-child,
+.compare-table tbody th:last-child {
   border-right: none;
 }
 
@@ -748,22 +767,22 @@ body {
      Row 1: name ·················· remark
      Row 2: A價格 ················· B價格
      Row 3: 價差  幅度 ············ 狀態  */
-  .compare-table { table-layout: auto; }
-  .compare-table thead { display: none; }
-  .compare-table tbody tr {
+  .main-content .compare-table { table-layout: auto; }
+  .main-content .compare-table thead { display: none; }
+  .main-content .compare-table tbody tr {
     display: grid;
     grid-template-columns: auto 1fr auto;
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-light);
     gap: 3px 10px;
   }
-  .compare-table tbody tr:last-child { border-bottom: none; }
-  .compare-table td {
+  .main-content .compare-table tbody tr:last-child { border-bottom: none; }
+  .main-content .compare-table td {
     border: none;
     padding: 0;
   }
   /* Row 1: name + remark */
-  .compare-table .td-name {
+  .main-content .compare-table .td-name {
     grid-column: 1 / 3;
     grid-row: 1;
     font-size: 12px;
@@ -771,7 +790,7 @@ body {
     word-break: break-word;
     line-height: 1.4;
   }
-  .compare-table .td-remark {
+  .main-content .compare-table .td-remark {
     grid-column: 3;
     grid-row: 1;
     font-size: 11px;
@@ -780,27 +799,27 @@ body {
     white-space: nowrap;
     align-self: center;
   }
-  .compare-table .td-remark:empty {
+  .main-content .compare-table .td-remark:empty {
     display: none;
   }
   /* Row 2: priceA ··· priceB (分散對齊) */
-  .compare-table .td-price {
+  .main-content .compare-table .td-price {
     font-size: 12px;
   }
-  .compare-table .td-price::before {
+  .main-content .compare-table .td-price::before {
     font-size: 10px;
     color: var(--text-muted);
     font-family: var(--font-sans);
     margin-right: 2px;
   }
-  .compare-table .td-price:nth-child(3)::before { content: 'A '; }
-  .compare-table .td-price:nth-child(4)::before { content: 'B '; }
-  .compare-table .td-price:nth-child(3) { grid-column: 1; grid-row: 2; }
-  .compare-table .td-price:nth-child(4) { grid-column: 3; grid-row: 2; text-align: right; }
+  .main-content .compare-table .td-price:nth-child(3)::before { content: 'A '; }
+  .main-content .compare-table .td-price:nth-child(4)::before { content: 'B '; }
+  .main-content .compare-table .td-price:nth-child(3) { grid-column: 1; grid-row: 2; }
+  .main-content .compare-table .td-price:nth-child(4) { grid-column: 3; grid-row: 2; text-align: right; }
   /* Row 3: diff + pct ··· status (分散對齊、垂直置中) */
-  .compare-table .td-diff { grid-column: 1; grid-row: 3; font-size: 12px; align-self: center; }
-  .compare-table .td-pct { grid-column: 2; grid-row: 3; font-size: 11px; text-align: center; align-self: center; }
-  .compare-table .td-status { grid-column: 3; grid-row: 3; text-align: right; align-self: center; }
+  .main-content .compare-table .td-diff { grid-column: 1; grid-row: 3; font-size: 12px; align-self: center; }
+  .main-content .compare-table .td-pct { grid-column: 2; grid-row: 3; font-size: 11px; text-align: center; align-self: center; }
+  .main-content .compare-table .td-status { grid-column: 3; grid-row: 3; text-align: right; align-self: center; }
   .badge { font-size: 10px; padding: 2px 8px; }
 }
 

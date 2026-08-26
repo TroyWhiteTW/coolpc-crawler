@@ -1,12 +1,13 @@
 /* 靜態頁面（首頁／分類頁／工具頁）專用樣式，沿用 style.css 的設計變數
-   Styles for the generated static pages, reusing the design tokens from style.css */
+   Styles for the generated static pages, reusing the design tokens from style.css
+
+   設計方向 Swiss / minimal：清楚的層級、對齊一致的資料表、克制的裝飾。
+   Direction is Swiss/minimal: explicit hierarchy, consistently aligned data tables,
+   restrained ornament. */
 
 /* brand-title / brand-sub 由 h1/p 改為 span，需補回區塊排版
    brand-title/brand-sub became spans; restore block layout */
-.brand-title {
-  display: block;
-}
-
+.brand-title,
 .brand-sub {
   display: block;
 }
@@ -20,35 +21,46 @@
   color: var(--accent);
 }
 
-/* ── 分類導覽列 Category nav ── */
+.header-brand:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── 分類導覽列 Category nav ──
+   30 個分類單行放不下。原本用 overflow-x: auto 會露出原生水平捲軸（醜且是
+   「避免水平捲動」的反例），改為自然換行的 chip；所有連結一律可見，
+   對爬蟲的內部連結探索也比捲動容器有利。
+   30 categories don't fit on one line. overflow-x: auto exposed a native scrollbar;
+   wrapping chips keep every link visible, which also helps crawlers discover them. */
 .cat-nav {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .cat-nav-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 10px 24px;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  align-items: center;
 }
 
 .cat-nav-inner a {
-  flex: 0 0 auto;
-  padding: 12px 14px;
+  padding: 5px 11px;
+  border-radius: 6px;
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
+  line-height: 1.4;
   white-space: nowrap;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border: 1px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .cat-nav-inner a:hover {
@@ -58,7 +70,8 @@
 
 .cat-nav-inner a.active {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+  background: var(--accent-light);
+  border-color: rgba(184, 115, 51, 0.4);
 }
 
 .cat-nav-inner a.nav-tool {
@@ -66,20 +79,25 @@
   color: var(--accent);
 }
 
+.cat-nav-inner a.nav-tool:hover {
+  background: var(--accent-light);
+}
+
 /* ── 頁面主體 Page body ── */
 .page-main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 28px 20px 64px;
+  padding: 28px 24px 72px;
 }
 
 .breadcrumb {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .breadcrumb a {
@@ -89,83 +107,198 @@
 
 .breadcrumb a:hover {
   color: var(--accent);
+  text-decoration: underline;
 }
 
 /* ── 導言 Intro copy ── */
 .page-intro {
-  margin-bottom: 28px;
-  max-width: 78ch;
+  margin-bottom: 32px;
+  max-width: 76ch;
 }
 
 .page-intro h1 {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.3;
-  margin-bottom: 14px;
-  color: var(--text);
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+  margin-bottom: 16px;
+  color: #f1f5f9;
 }
 
 .page-intro p {
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 14.5px;
+  line-height: 1.75;
   color: var(--text-secondary);
   margin-bottom: 10px;
 }
 
 .page-intro .lede {
   font-size: 16px;
+  line-height: 1.7;
   color: var(--text);
 }
 
+/* 數字以等寬字呈現，讓導言裡的統計值一眼可辨
+   Stats inside prose use the mono face so figures stand out */
 .page-intro strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-weight: 400;
+  font-weight: 500;
+  font-size: 0.94em;
 }
 
 .page-intro a {
   color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(184, 115, 51, 0.35);
+}
+
+.page-intro a:hover {
+  border-bottom-color: var(--accent);
 }
 
 .tool-intro {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px 20px 4px;
+  padding: 22px 24px 2px;
 }
 
 .tool-intro h1 {
   font-size: 24px;
   font-weight: 700;
+  letter-spacing: -0.3px;
   margin-bottom: 8px;
+  color: #f1f5f9;
 }
 
 .tool-intro p {
   font-size: 14px;
   line-height: 1.7;
   color: var(--text-secondary);
-  max-width: 78ch;
+  max-width: 76ch;
 }
 
 /* ── 區段標題 Section headings ── */
 .page-main h2 {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
-  margin: 36px 0 12px;
-  padding-bottom: 8px;
+  letter-spacing: -0.1px;
+  margin: 40px 0 14px;
+  padding-bottom: 9px;
   border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.page-main > section:first-of-type h2 {
+  margin-top: 28px;
 }
 
 .section-note {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-muted);
-  margin: -6px 0 12px;
+  margin: -8px 0 14px;
+  line-height: 1.6;
+}
+
+/* ── 資料表微調 Data table refinements ── */
+.table-scroll {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 靜態頁的表頭不吸附。.table-scroll 因 overflow-x 成為捲動容器，sticky 會相對於
+   「表格容器」而非視窗定位，讓表頭浮在資料列中間。這裡的表格已依子分類分組、
+   單組不長，取消 sticky 最單純。（比價工具的表格不在 .page-main 內，維持吸附。）
+   No sticky header here: .table-scroll is a scroll container because of overflow-x, so
+   sticky positions against the table box and the header row floats mid-table. These
+   tables are grouped by subcategory and stay short. The comparison tool keeps its
+   sticky header — its table isn't inside .page-main. */
+.page-main .compare-table thead {
+  position: static;
+}
+
+/* 商品名稱可能很長，允許在任意處斷行而不撐破表格
+   Product names are long; let them wrap instead of forcing overflow */
+.page-main .compare-table .td-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.5;
+  max-width: 560px;
+}
+
+/* 文字欄的表頭與內容一律靠左，數值欄一律靠右，避免標題與資料各自對齊
+   Text columns align left in both header and body; numeric columns align right */
+.page-main .compare-table .th-cat,
+.page-main .compare-table .td-cat,
+.page-main .compare-table .th-remark,
+.page-main .compare-table .td-remark {
+  text-align: left;
+}
+
+.page-main .compare-table .td-cat {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* 備註欄多數為空，壓到內容寬度，把剩餘版面讓給商品名稱
+   The remark column is mostly empty; shrink to content and give the room to names */
+.page-main .compare-table .th-remark,
+.page-main .compare-table .td-remark {
+  width: 1%;
+  white-space: nowrap;
+  max-width: none;
+}
+
+/* 分類欄的連結：預設無底線，hover 才提示
+   Category links: underline only on hover to cut visual noise */
+.page-main .compare-table td a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.page-main .compare-table td a:hover {
+  color: var(--accent);
+  border-bottom-color: rgba(184, 115, 51, 0.5);
+}
+
+/* 完整價格表的「較前次」欄多半為空值，弱化以突顯有異動的列
+   The delta column is mostly empty; mute it so real changes stand out */
+.page-main .compare-table .td-diff.same {
+  color: var(--text-muted);
+}
+
+/* ── 子分類區塊 Subcategory blocks ── */
+.sub-block {
+  margin-bottom: 26px;
+}
+
+.sub-block h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.sub-count {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 /* ── 分類卡片 Category cards ── */
 .cat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 10px;
 }
 
 .cat-card {
@@ -173,7 +306,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 14px 16px;
   text-decoration: none;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -184,73 +317,60 @@
 }
 
 .cat-card h3 {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14.5px;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+
+.cat-card:hover h3 {
+  color: var(--accent);
 }
 
 .cat-card-blurb {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.55;
   margin-bottom: 10px;
 }
 
 .cat-card-meta {
   display: flex;
   gap: 10px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
 
-.cat-card-meta .up {
-  color: var(--red);
-}
-
-.cat-card-meta .down {
-  color: var(--green);
-}
-
-/* ── 子分類區塊 Subcategory blocks ── */
-.sub-block {
-  margin-bottom: 24px;
-}
-
-.sub-block h3 {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  color: var(--text);
-}
-
-.sub-count {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  font-weight: 400;
-  color: var(--text-muted);
-}
+.cat-card-meta .up { color: var(--red); }
+.cat-card-meta .down { color: var(--green); }
 
 /* ── 常見問題 FAQ ── */
 .faq details {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  margin-bottom: 8px;
+  margin-bottom: 7px;
   overflow: hidden;
+}
+
+.faq details[open] {
+  border-color: var(--border);
 }
 
 .faq summary {
   cursor: pointer;
-  padding: 14px 16px;
+  padding: 13px 16px;
   list-style: none;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
+  transition: background 0.15s;
+}
+
+.faq summary:hover {
+  background: var(--surface-hover);
 }
 
 .faq summary::-webkit-details-marker {
@@ -261,6 +381,7 @@
   content: "▸";
   color: var(--accent);
   flex: 0 0 auto;
+  font-size: 11px;
   transition: transform 0.15s;
 }
 
@@ -270,14 +391,15 @@
 
 .faq summary h3 {
   display: inline;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text);
+  line-height: 1.6;
 }
 
 .faq details p {
-  padding: 0 16px 16px 32px;
-  font-size: 14px;
+  padding: 2px 16px 15px 33px;
+  font-size: 13.5px;
   line-height: 1.8;
   color: var(--text-secondary);
 }
@@ -286,17 +408,19 @@
 .cat-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cat-links a {
-  font-size: 12.5px;
-  padding: 6px 12px;
+  font-size: 12px;
+  padding: 5px 11px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-secondary);
   text-decoration: none;
+  line-height: 1.4;
+  transition: border-color 0.15s, color 0.15s;
 }
 
 .cat-links a:hover {
@@ -306,10 +430,10 @@
 
 /* ── 頁尾補充 Footer note ── */
 .footer-note {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-muted);
   line-height: 1.7;
-  max-width: 78ch;
+  max-width: 76ch;
   margin: 10px auto 0;
 }
 
@@ -326,23 +450,64 @@
   border: 0;
 }
 
-/* 靜態頁的表格：商品名稱以 th 呈現，需去除預設粗體置中
-   Static pages use th for product names; strip the default bold/center */
+/* 靜態頁的商品名稱以 th 呈現（列標題），須去除預設的粗體與置中
+   Product names are row headers; strip the default bold/center */
 .compare-table tbody th {
   font-weight: 400;
   text-align: left;
 }
 
-@media (max-width: 640px) {
-  .page-intro h1 {
-    font-size: 22px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
+}
 
-  .page-main {
-    padding: 20px 14px 48px;
-  }
+@media (max-width: 768px) {
+  .page-intro h1 { font-size: 24px; }
+  .page-intro .lede { font-size: 15px; }
+  .page-main { padding: 22px 16px 56px; }
 
-  .cat-grid {
-    grid-template-columns: 1fr;
+  /* 手機上 30 個 chip 換行會疊到 7 列、吃掉四分之一首屏，改為單列橫向捲動。
+     捲軸隱藏、右緣以漸層暗示可捲，符合行動裝置的分頁列慣例。
+     Wrapping 30 chips costs 7 rows on a phone; switch to a single scrolling row with
+     the scrollbar hidden and a gradient hinting at more content. */
+  .cat-nav { position: relative; }
+  .cat-nav-inner {
+    padding: 8px 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
   }
+  .cat-nav-inner::-webkit-scrollbar { display: none; }
+  .cat-nav-inner a { flex: 0 0 auto; }
+  .cat-nav-inner a.nav-tool { margin-left: 8px; }
+  .cat-nav::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 36px;
+    background: linear-gradient(to right, rgba(20, 25, 39, 0), var(--surface));
+    pointer-events: none;
+  }
+  .tool-intro { padding: 18px 16px 2px; }
+  .cat-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .page-main .compare-table .td-name { max-width: 260px; }
+  /* 靜態頁的表格維持真表格＋橫向捲動（卡片式重排是比價工具專用）
+     Static pages keep a real table with horizontal scroll inside its wrapper */
+  .page-main .compare-table { font-size: 12.5px; }
+}
+
+@media (max-width: 480px) {
+  .page-intro h1 { font-size: 21px; }
+  .cat-grid { grid-template-columns: 1fr; }
+  .page-main .compare-table .td-name { max-width: 190px; }
 }

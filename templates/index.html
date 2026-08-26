@@ -36,7 +36,7 @@
       <thead>
         <tr>
           <th scope="col" class="th-name">商品名稱</th>
-          <th scope="col">分類</th>
+          <th scope="col" class="th-cat">分類</th>
           <th scope="col" class="th-price">前次價格</th>
           <th scope="col" class="th-price">目前價格</th>
           <th scope="col" class="th-diff">價差</th>
@@ -47,7 +47,7 @@
         {% for p in top_down %}
         <tr>
           <th scope="row" class="td-name">{{ p.name }}</th>
-          <td><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
+          <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
           <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
           <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
           <td class="td-diff down">-${{ '{:,}'.format(-p.diff) }}</td>
@@ -69,7 +69,7 @@
       <thead>
         <tr>
           <th scope="col" class="th-name">商品名稱</th>
-          <th scope="col">分類</th>
+          <th scope="col" class="th-cat">分類</th>
           <th scope="col" class="th-price">前次價格</th>
           <th scope="col" class="th-price">目前價格</th>
           <th scope="col" class="th-diff">價差</th>
@@ -80,7 +80,7 @@
         {% for p in top_up %}
         <tr>
           <th scope="row" class="td-name">{{ p.name }}</th>
-          <td><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
+          <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
           <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
           <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
           <td class="td-diff up">+${{ '{:,}'.format(p.diff) }}</td>
