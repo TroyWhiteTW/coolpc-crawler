@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<article class="page-intro">
+  <h1>原價屋價格追蹤</h1>
+  <p class="lede">
+    本站每日自動記錄<a href="https://www.coolpc.com.tw/evaluate.php" target="_blank" rel="noopener nofollow">原價屋（CoolPC）線上估價單</a>上的電腦零組件報價，
+    保留完整歷史快照，讓你查得到某張顯示卡、某顆 CPU 在過去某一天賣多少錢，以及最近漲了還是跌了。
+  </p>
+  <p>
+    最新一次記錄於 <time datetime="{{ updated_iso }}">{{ updated_display }}</time>，
+    共收錄 <strong>{{ stats.total }}</strong> 項商品，涵蓋 <strong>{{ categories|length }}</strong> 個分類。
+    與前一次快照（{{ compare_from_display }}）相比，
+    有 <strong>{{ stats.up }}</strong> 項漲價、<strong>{{ stats.down }}</strong> 項降價、
+    <strong>{{ stats.new }}</strong> 項新上架、<strong>{{ stats.removed }}</strong> 項下架。
+    價格單位為新台幣（TWD），資料自 {{ history_start }} 起累積，目前共 {{ snapshot_count }} 份快照。
+  </p>
+</article>
+
+<section class="stats-bar" aria-label="本次異動統計">
+  <div class="stat-card"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">總商品數</div></div>
+  <div class="stat-card stat-changed"><div class="stat-value">{{ stats.changed }}</div><div class="stat-label">價格異動</div></div>
+  <div class="stat-card stat-up"><div class="stat-value">{{ stats.up }}</div><div class="stat-label">漲價</div></div>
+  <div class="stat-card stat-down"><div class="stat-value">{{ stats.down }}</div><div class="stat-label">降價</div></div>
+  <div class="stat-card stat-new"><div class="stat-value">{{ stats.new }}</div><div class="stat-label">新增</div></div>
+  <div class="stat-card stat-removed"><div class="stat-value">{{ stats.removed }}</div><div class="stat-label">下架</div></div>
+</section>
+
+{% if top_down %}
+<section class="movers">
+  <h2>近期降價幅度最大的商品</h2>
+  <p class="section-note">比較 {{ compare_from_display }} 與 {{ updated_display }} 兩份快照，依降價幅度排序。</p>
+  <div class="table-scroll">
+    <table class="compare-table">
+      <caption class="sr-only">近期降價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與跌幅</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="th-name">商品名稱</th>
+          <th scope="col">分類</th>
+          <th scope="col" class="th-price">前次價格</th>
+          <th scope="col" class="th-price">目前價格</th>
+          <th scope="col" class="th-diff">價差</th>
+          <th scope="col" class="th-pct">跌幅</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in top_down %}
+        <tr>
+          <th scope="row" class="td-name">{{ p.name }}</th>
+          <td><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
+          <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
+          <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+          <td class="td-diff down">-${{ '{:,}'.format(-p.diff) }}</td>
+          <td class="td-pct down">{{ '%.1f'|format(p.pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if top_up %}
+<section class="movers">
+  <h2>近期漲價幅度最大的商品</h2>
+  <div class="table-scroll">
+    <table class="compare-table">
+      <caption class="sr-only">近期漲價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與漲幅</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="th-name">商品名稱</th>
+          <th scope="col">分類</th>
+          <th scope="col" class="th-price">前次價格</th>
+          <th scope="col" class="th-price">目前價格</th>
+          <th scope="col" class="th-diff">價差</th>
+          <th scope="col" class="th-pct">漲幅</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in top_up %}
+        <tr>
+          <th scope="row" class="td-name">{{ p.name }}</th>
+          <td><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
+          <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
+          <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+          <td class="td-diff up">+${{ '{:,}'.format(p.diff) }}</td>
+          <td class="td-pct up">+{{ '%.1f'|format(p.pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="cat-grid-section">
+  <h2>依分類瀏覽價格</h2>
+  <div class="cat-grid">
+    {% for c in categories %}
+    <a class="cat-card" href="{{ root }}c/{{ c.slug }}.html">
+      <h3>{{ c.name }}</h3>
+      <p class="cat-card-blurb">{{ c.blurb }}</p>
+      <p class="cat-card-meta">
+        <span>{{ c.count }} 項商品</span>
+        {% if c.up %}<span class="up">▲ {{ c.up }}</span>{% endif %}
+        {% if c.down %}<span class="down">▼ {{ c.down }}</span>{% endif %}
+      </p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="faq">
+  <h2>常見問題</h2>
+  {% for item in faq %}
+  <details{% if loop.first %} open{% endif %}>
+    <summary><h3>{{ item.q }}</h3></summary>
+    <p>{{ item.a }}</p>
+  </details>
+  {% endfor %}
+</section>
+
+{% endblock %}

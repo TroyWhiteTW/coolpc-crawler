@@ -208,3 +208,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# 靜態站台產物（每次 build 重新產生，不納入版控）
+# Generated static site (rebuilt each run, not tracked)
+_site/

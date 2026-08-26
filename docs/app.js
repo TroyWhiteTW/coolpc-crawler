@@ -88,7 +88,9 @@ function loadCSV(filename) {
     return Promise.resolve(csvCache.get(filename));
   }
   return new Promise((resolve, reject) => {
-    const url = '../output/' + filename;
+    // CSV 位於站台根目錄的 output/，與 compare.html 同層
+    // CSVs live in output/ at the site root, alongside compare.html
+    const url = 'output/' + filename;
     Papa.parse(url, {
       download: true,
       header: true,
@@ -235,25 +237,41 @@ async function runComparison() {
   }
 }
 
+// 商品識別鍵。原價屋有同名但屬於不同子分類的商品（例如同型號螢幕同時列在
+// 27 吋與 32 吋區塊，價差達 7 倍），單用 name 比對會互相覆蓋而產生假漲跌。
+// Product identity key. CoolPC lists same-named products under different
+// subcategories (e.g. one monitor model under both the 27" and 32" blocks, 7x apart
+// in price); keying on name alone lets them overwrite each other and fabricates swings.
+function rowKey(row) {
+  return (row.category || '') + ' ' + (row.subcategory || '') + ' ' + row.name;
+}
+
+// 以「識別鍵 + 該鍵的第幾次出現」建表。原價屋在同一子分類內也會重複列出同名商品
+// 且價格不同（例如同型號螢幕同時掛 $6,399 與 $19,988），只用識別鍵會讓後者覆蓋
+// 前者、配對錯位；改以出現序配對，第 n 筆對第 n 筆。
+// Index by identity key plus its nth occurrence. CoolPC repeats same-named products
+// within one subcategory at different prices, so keying alone misaligns the pairing.
+function buildKeyedMap(data, cats) {
+  const map = new Map();
+  const seen = new Map();
+  data.forEach((row) => {
+    if (row.name && row.price) {
+      const k = rowKey(row);
+      const n = seen.get(k) || 0;
+      seen.set(k, n + 1);
+      map.set(k + ' #' + n, row);
+      cats.add(row.category);
+    }
+  });
+  return map;
+}
+
 // ── 建立比較資料 Build comparison data ──
 function buildComparison(fileA, fileB) {
-  const mapA = new Map();
-  const mapB = new Map();
   const catsA = new Set();
   const catsB = new Set();
-
-  dataA.forEach((row) => {
-    if (row.name && row.price) {
-      mapA.set(row.name, row);
-      catsA.add(row.category);
-    }
-  });
-  dataB.forEach((row) => {
-    if (row.name && row.price) {
-      mapB.set(row.name, row);
-      catsB.add(row.category);
-    }
-  });
+  const mapA = buildKeyedMap(dataA, catsA);
+  const mapB = buildKeyedMap(dataB, catsB);
 
   // 取分類交集，避免 MAIN/ALL 模式差異導致誤判
   // Intersect categories to avoid MAIN/ALL mode mismatch
@@ -275,18 +293,19 @@ function buildComparison(fileA, fileB) {
     modeNotice.style.display = 'none';
   }
 
-  const allNames = new Set();
-  mapA.forEach((row, name) => { if (sharedCats.has(row.category)) allNames.add(name); });
-  mapB.forEach((row, name) => { if (sharedCats.has(row.category)) allNames.add(name); });
+  const allKeys = new Set();
+  mapA.forEach((row, key) => { if (sharedCats.has(row.category)) allKeys.add(key); });
+  mapB.forEach((row, key) => { if (sharedCats.has(row.category)) allKeys.add(key); });
 
   compareResults = [];
-  allNames.forEach((name) => {
-    const a = mapA.get(name);
-    const b = mapB.get(name);
+  allKeys.forEach((key) => {
+    const a = mapA.get(key);
+    const b = mapB.get(key);
 
     if (a && !sharedCats.has(a.category)) return;
     if (b && !sharedCats.has(b.category)) return;
 
+    const name = (a || b).name;
     const priceA = a ? Number(a.price) : null;
     const priceB = b ? Number(b.price) : null;
     const category = (a || b).category || '';

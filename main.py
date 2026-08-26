@@ -139,9 +139,24 @@ def main():
     # -o: 指定 CSV 輸出路徑
     crawl_parser.add_argument("-o", "--output", help="Output CSV path")
 
+    # build 子命令：由最新 CSV 產生可被索引的靜態頁面
+    build_parser = subparsers.add_parser("build", help="Generate static site into _site/")
+    # --with-data: 一併複製 CSV 快照，供比價工具在部署後讀取
+    build_parser.add_argument("--with-data", action="store_true",
+                              help="Copy output/ CSV snapshots into _site/output/")
+    # --data-months: 只發布最近 N 個月的快照（0 = 全部）。repo 的 output/ 不受影響
+    build_parser.add_argument("--data-months", type=int, default=0, metavar="N",
+                              help="Publish only the last N months of snapshots "
+                                   "(0 = all; the repo's output/ is never modified)")
+
     args = parser.parse_args()
     if args.command == "crawl":
         crawl(args)
+    elif args.command == "build":
+        # 延後 import，讓 crawl 不需要安裝 jinja2
+        # Imported lazily so crawl works without jinja2 installed
+        from crawler.builder import build
+        build(args)
     else:
         parser.print_help()
 

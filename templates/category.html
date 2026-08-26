@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<nav class="breadcrumb" aria-label="麵包屑">
+  <a href="{{ root }}index.html">原價屋價格追蹤</a>
+  <span aria-hidden="true">›</span>
+  <span>{{ category.name }}</span>
+</nav>
+
+<article class="page-intro">
+  <h1>{{ category.name }} 價格列表</h1>
+  <p class="lede">
+    原價屋（CoolPC）{{ category.blurb }}的最新報價，共 <strong>{{ items|length }}</strong> 項商品，
+    價格區間為 <strong>${{ '{:,}'.format(price_min) }}</strong> 至 <strong>${{ '{:,}'.format(price_max) }}</strong>,
+    中位數 <strong>${{ '{:,}'.format(price_median) }}</strong>（新台幣）。
+  </p>
+  <p>
+    資料擷取於 <time datetime="{{ updated_iso }}">{{ updated_display }}</time>。
+    與前一次快照（{{ compare_from_display }}）相比，
+    本分類有 <strong>{{ cat_stats.up }}</strong> 項漲價、<strong>{{ cat_stats.down }}</strong> 項降價、
+    <strong>{{ cat_stats.new }}</strong> 項新上架。
+    完整歷史走勢可使用<a href="{{ root }}compare.html">歷史比價工具</a>查詢。
+  </p>
+</article>
+
+{% if movers %}
+<section class="movers">
+  <h2>{{ category.name }} 近期價格異動</h2>
+  <div class="table-scroll">
+    <table class="compare-table">
+      <caption class="sr-only">{{ category.name }} 近期價格異動列表</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="th-name">商品名稱</th>
+          <th scope="col" class="th-price">前次價格</th>
+          <th scope="col" class="th-price">目前價格</th>
+          <th scope="col" class="th-diff">價差</th>
+          <th scope="col" class="th-pct">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in movers %}
+        <tr>
+          <th scope="row" class="td-name">{{ p.name }}</th>
+          <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
+          <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+          <td class="td-diff {{ 'up' if p.diff > 0 else 'down' }}">{{ '+' if p.diff > 0 else '-' }}${{ '{:,}'.format(p.diff|abs) }}</td>
+          <td class="td-pct {{ 'up' if p.diff > 0 else 'down' }}">{{ '+' if p.diff > 0 else '' }}{{ '%.1f'|format(p.pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="full-list">
+  <h2>{{ category.name }} 完整價格表</h2>
+  {% for sub in subcategories %}
+  <div class="sub-block">
+    <h3>{{ sub.name }}<span class="sub-count">{{ sub.products|length }} 項</span></h3>
+    <div class="table-scroll">
+      <table class="compare-table">
+        <caption class="sr-only">{{ category.name }} — {{ sub.name }} 商品價格表</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="th-name">商品名稱</th>
+            <th scope="col" class="th-price">價格 (TWD)</th>
+            <th scope="col" class="th-diff">較前次</th>
+            <th scope="col" class="th-remark">備註</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in sub.products %}
+          <tr>
+            <th scope="row" class="td-name">{{ p.name }}</th>
+            <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+            <td class="td-diff {{ p.status }}">
+              {%- if p.status == 'up' %}+${{ '{:,}'.format(p.diff) }}
+              {%- elif p.status == 'down' %}-${{ '{:,}'.format(-p.diff) }}
+              {%- elif p.status == 'new' %}<span class="badge badge-new">✦ 新增</span>
+              {%- else %}—{% endif %}
+            </td>
+            <td class="td-remark">{{ p.remark }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="other-cats">
+  <h2>其他分類</h2>
+  <div class="cat-links">
+    {% for c in nav_categories %}{% if c.slug != category.slug %}
+    <a href="{{ root }}c/{{ c.slug }}.html">{{ c.name }}</a>
+    {% endif %}{% endfor %}
+  </div>
+</section>
+
+{% endblock %}

@@ -1,45 +1,48 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-4SB0FDBZ1K');
-  </script>
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>原價屋價格追蹤 — CoolPC Price Tracker</title>
-  <meta name="description" content="追蹤原價屋（CoolPC）電腦零組件歷史價格變化，比較不同時間點的價格快照，一目了然查看 CPU、顯示卡、SSD 等漲跌異動。開源免費工具，每日自動爬取更新。">
-  <meta name="keywords" content="原價屋,CoolPC,歷史價格,比價,電腦零組件,CPU,顯示卡,SSD,記憶體,價格追蹤,漲價,降價">
+  <title>歷史比價工具 — 任選兩個時間點比對原價屋價格 | CoolPC Price Tracker</title>
+  <meta name="description" content="選擇任意兩個時間點的快照，比對原價屋（CoolPC）電腦零組件在該期間的漲跌幅度、新上架與下架情況。涵蓋 CPU、顯示卡、SSD、記憶體等全分類，開源免費。">
   <meta name="author" content="TroyWhiteTW">
-  <link rel="canonical" href="https://troywhitetw.github.io/coolpc-crawler/docs/index.html">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="canonical" href="https://troywhitetw.github.io/coolpc-crawler/compare.html">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="原價屋價格追蹤 — CoolPC Price Tracker">
-  <meta property="og:description" content="追蹤原價屋電腦零組件歷史價格，比較不同時間快照的漲跌變化。開源免費，每日自動更新。">
-  <meta property="og:url" content="https://troywhitetw.github.io/coolpc-crawler/docs/index.html">
+  <meta property="og:title" content="歷史比價工具 — 原價屋價格追蹤">
+  <meta property="og:description" content="選擇任意兩個時間點的快照，比對原價屋電腦零組件的漲跌變化。開源免費，每日自動更新。">
+  <meta property="og:url" content="https://troywhitetw.github.io/coolpc-crawler/compare.html">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:site_name" content="原價屋價格追蹤">
+  <meta property="og:image" content="https://troywhitetw.github.io/coolpc-crawler/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="歷史比價工具 — 原價屋價格追蹤">
+  <meta name="twitter:description" content="選擇任意兩個時間點的快照，比對原價屋電腦零組件的漲跌變化。">
+  <meta name="twitter:image" content="https://troywhitetw.github.io/coolpc-crawler/og-image.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="pages.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 </head>
 <body>
 
   <!-- Header -->
   <header class="site-header">
     <div class="header-inner">
-      <div class="header-brand">
+      <a class="header-brand" href="index.html">
         <div class="brand-icon">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
             <rect x="2" y="8" width="4" height="18" rx="1" fill="var(--accent)"/>
             <rect x="8" y="4" width="4" height="22" rx="1" fill="var(--accent)" opacity="0.7"/>
             <rect x="14" y="12" width="4" height="14" rx="1" fill="var(--accent)" opacity="0.5"/>
@@ -47,13 +50,25 @@
           </svg>
         </div>
         <div>
-          <h1 class="brand-title">原價屋價格追蹤</h1>
-          <p class="brand-sub">CoolPC Price Tracker</p>
+          <span class="brand-title">原價屋價格追蹤</span>
+          <span class="brand-sub">CoolPC Price Tracker</span>
         </div>
-      </div>
+      </a>
       <div class="header-meta" id="headerMeta"></div>
     </div>
   </header>
+
+  <nav class="cat-nav" aria-label="主要導覽">
+    <div class="cat-nav-inner">
+      <a href="index.html">← 回總覽</a>
+      <a href="compare.html" class="active" aria-current="page">歷史比價工具</a>
+    </div>
+  </nav>
+
+  <div class="tool-intro">
+    <h1>原價屋歷史比價工具</h1>
+    <p>選擇任意兩個時間點的價格快照，即可比對該期間內所有商品的漲跌幅度、新上架與下架情況。資料每日自動更新 5 次。</p>
+  </div>
 
   <!-- Controls -->
   <section class="controls-bar">
@@ -160,9 +175,20 @@
 
   <!-- Footer -->
   <footer class="site-footer">
-    <p>coolpc-crawler &middot; 資料來源：<a href="https://www.coolpc.com.tw/evaluate.php" target="_blank" rel="noopener">原價屋線上估價</a> &middot; <a href="https://github.com/TroyWhiteTW/coolpc-crawler" target="_blank" rel="noopener">GitHub</a></p>
+    <p>coolpc-crawler &middot; 資料來源：<a href="https://www.coolpc.com.tw/evaluate.php" target="_blank" rel="noopener nofollow">原價屋線上估價</a> &middot; <a href="https://github.com/TroyWhiteTW/coolpc-crawler" target="_blank" rel="noopener">GitHub</a></p>
+    <p class="footer-note">本站為非官方的開源價格記錄工具，與原價屋（欣亞數位）無任何隸屬關係。價格僅供參考，實際售價與供貨狀況請以原價屋官方網站為準。</p>
   </footer>
 
-  <script src="app.js"></script>
+  <!-- defer 確保 PapaParse 先於 app.js 執行 defer keeps PapaParse ahead of app.js -->
+  <script src="app.js" defer></script>
+
+  <!-- Analytics 置於文件尾端，避免阻塞首屏渲染 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-4SB0FDBZ1K');
+  </script>
 </body>
 </html>

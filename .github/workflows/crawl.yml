@@ -26,10 +26,12 @@ concurrency:
   group: crawl
   cancel-in-progress: false
 
-# 授予寫入權限，讓 bot 可以 push commit
-# Grant write permission so the bot can push commits
+# contents: 讓 bot push commit；pages/id-token: 部署 GitHub Pages
+# contents: lets the bot push commits; pages/id-token: deploy to GitHub Pages
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -104,3 +106,27 @@ jobs:
           fi
           git diff --cached --quiet || git commit -m "$MSG"
           git push
+
+      # 由最新 CSV 產生靜態頁面。爬取失敗時沿用既有資料重建，站台維持可用
+      # Generate static pages from the newest CSV. On crawl failure this rebuilds from
+      # existing data, keeping the site live.
+      - name: Build static site
+        run: uv run python main.py build --with-data
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  # 部署到 GitHub Pages。需先在 Settings → Pages 將 Source 設為 "GitHub Actions"
+  # Deploy to GitHub Pages. Requires Settings -> Pages -> Source set to "GitHub Actions"
+  deploy:
+    needs: crawl
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

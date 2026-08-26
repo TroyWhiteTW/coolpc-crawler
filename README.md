@@ -14,7 +14,7 @@
 ## 技術棧
 
 - Python 3.9+（建議搭配 [uv](https://github.com/astral-sh/uv) 管理依賴，亦可直接以原生 Python + pip 執行）
-- beautifulsoup4（HTML 解析）/ requests（HTTP 請求，內建 retry 與指數 backoff）
+- beautifulsoup4（HTML 解析）/ requests（HTTP 請求，內建 retry 與指數 backoff）/ jinja2（靜態頁面樣板）
 - 目標網頁宣告為 Big5，但部分字元需以 `big5hkscs`（Big5 超集）解碼避免亂碼；所有資料在初始 HTML 中，無需 JS 渲染
 
 ## 安裝
@@ -33,6 +33,8 @@ uv sync
 uv run python main.py crawl            # 只爬取 10 個主要零組件分類
 uv run python main.py crawl --all      # 爬取全部 30 個分類
 uv run python main.py crawl -o out.csv # 指定輸出路徑
+
+uv run python main.py build            # 由最新快照產生靜態網站到 _site/
 ```
 
 預設輸出至 `output/coolpc_YYYYMMDD_HHMMSS.csv`。
@@ -63,17 +65,23 @@ uv run python main.py crawl -o out.csv # 指定輸出路徑
 ## 專案結構
 
 ```
-├── main.py                 # CLI 入口（argparse 子命令）
+├── main.py                 # CLI 入口（argparse 子命令：crawl / build）
 ├── crawler/
-│   ├── models.py           # Product dataclass + MAIN_CATEGORIES 設定
-│   └── scraper.py          # fetch_page() + parse_products()
+│   ├── models.py           # Product dataclass + 分類設定（MAIN_CATEGORIES、slug、短名）
+│   ├── scraper.py          # fetch_page() + parse_products()
+│   └── builder.py          # 靜態頁面產生器（讀最新兩份 CSV → HTML）
+├── templates/              # Jinja2 樣板
+│   ├── base.html           # 共用 head／導覽／頁尾／JSON-LD
+│   ├── index.html          # 總覽首頁
+│   └── category.html       # 分類價格頁
 ├── output/                 # CSV 輸出目錄（已納入版控）
-├── docs/                   # GitHub Pages 前端頁面
-│   ├── index.html          # 價格對比主頁面
-│   ├── style.css
+├── docs/                   # 前端原始資源（非發布目錄）
+│   ├── compare.html        # 歷史比價工具（SPA）
+│   ├── style.css / pages.css
 │   ├── app.js
+│   ├── og-image.png / favicon.svg
 │   └── crawl_history.json  # 爬取歷史清單（自動產生）
-├── index.html              # Root redirect → docs/index.html
+├── _site/                  # build 產物（gitignored，Actions 部署來源）
 └── pyproject.toml
 ```
 
@@ -104,17 +112,59 @@ debug HTML 位置：`output/debug/coolpc_YYYYMMDD_HHMMSS.html`（時間戳對齊
 
 > 注意：HTTP 層完全失敗（三次 retry 都連不上原價屋）仍會讓 Action 紅燈、不產生 commit，這跟「拿到壞內容」是不同的失敗模式。
 
-## 價格對比頁面
+## 網站
 
-透過 GitHub Pages 提供靜態價格對比頁面，可選擇兩份爬取快照進行比較。
+透過 GitHub Pages 發布，由 `main.py build` 在每次爬取後重新產生靜態頁面。
 
-- https://troywhitetw.github.io/coolpc-crawler/docs/index.html
-- 支援年月分級選擇、分類摺疊、漲跌標示、MAIN/ALL 模式自動交集比較
+| 頁面 | 網址 | 說明 |
+|---|---|---|
+| 總覽首頁 | `/` | 最新報價統計、漲跌幅 TOP 20、分類索引、常見問題 |
+| 分類頁 | `/c/<slug>.html` | 單一分類完整價格表，依子分類分組（30 頁） |
+| 歷史比價工具 | `/compare.html` | 任選兩份快照比對（原本的 SPA） |
+
+首頁與分類頁是**建置期產生的靜態 HTML**，商品名稱與價格直接寫在原始碼中，不依賴 JavaScript
+即可被搜尋引擎與 AI 爬蟲讀取；比價工具維持 client-side 渲染。
+
+### 部署
+
+Pages 的 Source 需設為 **GitHub Actions**（不是 branch）。workflow 會在爬取後依序執行
+`main.py build --with-data`、上傳 `_site/` 為 Pages artifact，再由 `deploy` job 發布。
+
+```bash
+uv run python main.py build                      # 只產生 HTML（快速預覽）
+uv run python main.py build --with-data          # 一併複製全部 CSV（比價工具需要）
+uv run python main.py build --with-data --data-months 6   # 只發布近 6 個月的快照
+```
+
+> `--data-months` 只影響「發布哪些快照」，repo 的 `output/` 永遠保持完整。
+> 需要控制 Pages 站台體積時（上限 1 GB）調整此參數，並會同步裁切 `crawl_history.json`，
+> 避免比價工具的下拉選單指向未發布的檔案。
+
+本機預覽：
+
+```bash
+uv run python main.py build --with-data --data-months 1
+uv run python -m http.server 8000 --directory _site
+```
 
 ## 已知問題
 
 1. 舊價格（A 側）預設選擇當月第 6 筆資料，若當月不足 6 筆則選最後一筆，不會自動回推至前一個月
-2. **商品名稱微調會被誤判為新增/下架** — 對比頁面以商品名稱完整字串作為比對 key（`docs/app.js` 的 `mapA`/`mapB`），若原價屋微調名稱（如 `WIN11 PRO` → `WIN11 Pro`、空格數量、全形/半形變動），同一個商品會被拆成一筆 ✕ 下架 + 一筆 ✦ 新增。crawler 忠實記錄原文不做正規化，這類雜訊只能在閱讀對比結果時自行辨識。
+2. **商品名稱微調會被誤判為新增/下架** — 比對 key 包含商品名稱完整字串，若原價屋微調名稱（如 `WIN11 PRO` → `WIN11 Pro`、空格數量、全形/半形變動），同一個商品會被拆成一筆 ✕ 下架 + 一筆 ✦ 新增。crawler 忠實記錄原文不做正規化，這類雜訊只能在閱讀對比結果時自行辨識。
+
+### 商品識別鍵
+
+比對兩份快照時，商品的識別鍵為 **`(分類, 子分類, 名稱, 該組合的第幾次出現)`**，實作於
+`crawler/builder.py` 的 `_row_key()` / `_occurrence_keys()` 與 `docs/app.js` 的
+`rowKey()` / `buildKeyedMap()`。
+
+之所以不能只用商品名稱，是因為原價屋的資料有兩種重複：
+
+- **跨子分類同名** — 同一型號螢幕同時列在「27 吋」與「32 吋 4K」區塊，價格相差 7 倍
+- **同子分類內同名** — 同一台螢幕在同一區塊出現兩次，掛著兩個不同價格
+
+單用名稱建表時後者會覆蓋前者，導致兩份快照價格明明完全沒變，卻算出 −86% 的假降價。
+最新一份 ALL 快照中約有 117 組同名商品、影響 239 列。
 
 ## License
 
