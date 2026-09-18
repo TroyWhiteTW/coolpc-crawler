@@ -71,7 +71,7 @@ summary:focus-visible {
 .cat-nav-inner a.active {
   color: var(--accent-text);
   background: var(--accent-light);
-  border-color: rgba(184, 115, 51, 0.4);
+  border-color: var(--accent-border);
 }
 
 .cat-nav-inner a.nav-tool {
@@ -124,7 +124,7 @@ summary:focus-visible {
   line-height: 1.25;
   letter-spacing: -0.4px;
   margin-bottom: 16px;
-  color: #f1f5f9;
+  color: var(--text-strong);
 }
 
 .page-intro p {
@@ -153,7 +153,7 @@ summary:focus-visible {
 .page-intro a {
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(184, 115, 51, 0.35);
+  border-bottom: 1px solid var(--accent-border);
 }
 
 .page-intro a:hover {
@@ -171,7 +171,7 @@ summary:focus-visible {
   font-weight: 700;
   letter-spacing: -0.3px;
   margin-bottom: 8px;
-  color: #f1f5f9;
+  color: var(--text-strong);
 }
 
 .tool-intro p {
@@ -264,7 +264,7 @@ summary:focus-visible {
 
 .page-main .compare-table td a:hover {
   color: var(--accent);
-  border-bottom-color: rgba(184, 115, 51, 0.5);
+  border-bottom-color: var(--accent);
 }
 
 /* 完整價格表的「較前次」欄多半為空值，弱化以突顯有異動的列

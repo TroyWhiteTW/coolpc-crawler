@@ -7,6 +7,9 @@
   <meta name="description" content="{{ description }}">
   <meta name="author" content="TroyWhiteTW">
   <meta name="theme-color" content="#0b0f1a">
+  {# 首次繪製前還原使用者選的主題，避免深淺閃爍；預設深色，切換邏輯在 theme.js
+     Restore the saved theme before first paint to avoid a flash; dark by default, toggle logic lives in theme.js #}
+  <script>try{localStorage.getItem('theme')==='light'&&(document.documentElement.dataset.theme='light')}catch{}</script>
   <link rel="canonical" href="{{ canonical }}">
   <link rel="icon" type="image/svg+xml" href="{{ root }}favicon.svg">
   {# 允許搜尋引擎與 AI 摘要完整取用內容 Allow full snippet extraction for search and AI summaries #}
@@ -59,8 +62,11 @@
         <span class="brand-sub">CoolPC Price Tracker</span>
       </div>
     </a>
-    <div class="header-meta">
-      更新於 <time datetime="{{ updated_iso }}">{{ updated_display }}</time>
+    <div class="header-right">
+      <div class="header-meta">
+        更新於 <time datetime="{{ updated_iso }}">{{ updated_display }}</time>
+      </div>
+      <button class="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="淺色模式" title="切換淺色／深色模式"></button>
     </div>
   </div>
 </header>
@@ -74,6 +80,16 @@
     <a href="{{ root }}compare.html" class="nav-tool">歷史比價工具 →</a>
   </div>
 </nav>
+{# 手機導覽列為橫向捲動，導覽列一解析完就把目前分類捲到列中央；只改 scrollLeft，不影響頁面垂直位置
+   The nav scrolls horizontally on phones; center the active chip as soon as the nav is parsed,
+   touching scrollLeft only so the page's vertical position is unaffected #}
+<script>{
+  const active = document.querySelector('.cat-nav-inner a.active');
+  const nav = active?.parentElement;
+  if (nav && nav.scrollWidth > nav.clientWidth) {
+    nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+  }
+}</script>
 
 <main class="page-main">
 {% block content %}{% endblock %}
@@ -84,18 +100,7 @@
   <p class="footer-note">本站為非官方的開源價格記錄工具，與原價屋（欣亞數位）無任何隸屬關係。價格僅供參考，實際售價與供貨狀況請以原價屋官方網站為準。</p>
 </footer>
 
-{# 手機導覽列為橫向捲動，載入時把目前分類捲到列中央；只改 scrollLeft，不影響頁面垂直位置
-   The nav scrolls horizontally on phones; center the active chip on load by setting
-   scrollLeft only, so the page's vertical position is untouched #}
-<script>
-  (function () {
-    var a = document.querySelector('.cat-nav-inner a.active');
-    var n = a && a.parentNode;
-    if (n && n.scrollWidth > n.clientWidth) {
-      n.scrollLeft = a.offsetLeft - (n.clientWidth - a.offsetWidth) / 2;
-    }
-  })();
-</script>
+<script type="module" src="{{ root }}theme.js"></script>
 
 {# Analytics 置於文件尾端，避免阻塞首屏渲染 Analytics at end of body to avoid blocking first paint #}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>

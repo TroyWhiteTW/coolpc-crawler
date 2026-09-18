@@ -1,47 +1,93 @@
-/* ── 設計變數 Variables ── */
+/* ── 設計變數 Variables ──
+   深色為預設；透明疊色一律用 color-mix() 從基底色衍生，淺色主題只需覆寫基底色
+   Dark is the default; every tint derives from its base colour via color-mix(), so the
+   light theme only overrides base colours */
 :root {
+  color-scheme: dark;
   --bg: #0b0f1a;
   --surface: #141927;
   --surface-hover: #1a2035;
+  --thead-bg: #0f1525;
   --border: #252d3f;
   --border-light: #1e2538;
   --text: #e2e8f0;
+  --text-strong: #f1f5f9;
   --text-secondary: #8b95a8;
   --text-muted: #78839a;
-
+  --knob: #c8d0de;
   --header-bg: #060a14;
-  --header-text: #e2e8f0;
 
   --accent: #b87333;
   --accent-light: #3d2a14;
   --accent-hover: #c98040;
   /* 深色 accent 底上的文字用色，銅色本身對比不足 Text on dark accent backgrounds; plain copper falls short */
   --accent-text: #dc9a5e;
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 22%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
 
   --red: #ef4444;
-  --red-bg: rgba(239, 68, 68, 0.12);
-  --red-border: rgba(239, 68, 68, 0.3);
   --green: #22c55e;
-  --green-bg: rgba(34, 197, 94, 0.12);
-  --green-border: rgba(34, 197, 94, 0.3);
   --blue: #60a5fa;
-  --blue-bg: rgba(96, 165, 250, 0.1);
-  --blue-border: rgba(96, 165, 250, 0.25);
   --orange: #fb923c;
-  --orange-bg: rgba(251, 146, 60, 0.1);
-  --orange-border: rgba(251, 146, 60, 0.25);
+  --red-bg: color-mix(in srgb, var(--red) 12%, transparent);
+  --red-border: color-mix(in srgb, var(--red) 30%, transparent);
+  --green-bg: color-mix(in srgb, var(--green) 12%, transparent);
+  --green-border: color-mix(in srgb, var(--green) 30%, transparent);
+  --blue-bg: color-mix(in srgb, var(--blue) 10%, transparent);
+  --blue-border: color-mix(in srgb, var(--blue) 25%, transparent);
+  --orange-bg: color-mix(in srgb, var(--orange) 10%, transparent);
+  --orange-border: color-mix(in srgb, var(--orange) 25%, transparent);
+  --row-new-bg: color-mix(in srgb, var(--blue) 5%, transparent);
+  --row-removed-bg: color-mix(in srgb, var(--orange) 5%, transparent);
   --gray-bg: #1a2035;
 
   --radius: 8px;
   --radius-lg: 12px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 4px 12px rgb(0 0 0 / 0.5);
 
   /* 中文用系統字型，省下每頁 1 到 2 MB 的 Noto Sans TC 切片 System CJK fonts; saves 1 to 2 MB of Noto Sans TC slices per page */
   --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei',
                'Noto Sans CJK TC', 'Noto Sans TC', 'Source Han Sans TC', sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* ── 淺色主題 Light theme ──
+   <html data-theme="light"> 時生效，由 theme.js 的開關切換並存在 localStorage。
+   暖米白底配深藍黑字，銅色與漲跌語意色壓深到 WCAG AA
+   Active on <html data-theme="light">, toggled by theme.js and persisted in localStorage.
+   Warm off-white with navy-black text; copper and the semantic colours are darkened to WCAG AA */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-hover: #f1efe9;
+  --thead-bg: #f1efe9;
+  --border: #d8d3c8;
+  --border-light: #e7e3da;
+  --text: #1a1f2e;
+  --text-strong: #0b0f1a;
+  --text-secondary: #4b5468;
+  --text-muted: #5f677a;
+  --knob: #ffffff;
+  --header-bg: #ffffff;
+
+  --accent: #9a5b22;
+  --accent-light: #f4e6d6;
+  --accent-hover: #7f4a1a;
+  --accent-text: #7a4413;
+
+  --red: #c62828;
+  --green: #1e7d3f;
+  --blue: #1d5fbf;
+  --orange: #a84a06;
+  --gray-bg: #ecebe5;
+
+  --shadow-sm: 0 1px 2px rgb(26 31 46 / 0.06);
+  --shadow: 0 1px 3px rgb(26 31 46 / 0.08), 0 1px 2px rgb(26 31 46 / 0.06);
+  --shadow-lg: 0 4px 12px rgb(26 31 46 / 0.12);
 }
 
 /* ── 重置 Reset ── */
@@ -87,7 +133,7 @@ body {
 .brand-icon {
   width: 42px;
   height: 42px;
-  background: rgba(184, 115, 51, 0.15);
+  background: var(--accent-soft);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -97,9 +143,9 @@ body {
 .brand-title {
   font-size: 20px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text-strong);
   letter-spacing: 0.5px;
-  text-shadow: 0 0 20px rgba(184, 115, 51, 0.15);
+  text-shadow: 0 0 20px var(--accent-soft);
 }
 
 .brand-sub {
@@ -111,10 +157,59 @@ body {
   margin-top: 1px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .header-meta {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* ── 主題開關 Theme toggle ──
+   單一 button 當軌道，::before 當圓點兼圖示；aria-checked="true" 代表淺色
+   One button is the track and ::before the knob plus icon; aria-checked="true" means light */
+.theme-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.theme-toggle::before {
+  content: "☾";
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--knob);
+  color: #0b0f1a;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s;
+}
+
+.theme-toggle[aria-checked="true"] {
+  background: var(--accent);
+}
+
+.theme-toggle[aria-checked="true"]::before {
+  content: "☀";
+  transform: translateX(20px);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── 控制列 Controls ── */
@@ -192,7 +287,7 @@ body {
 .select-wrap select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .select-wrap::after {
@@ -485,7 +580,7 @@ body {
   left: 2px;
   width: 16px;
   height: 16px;
-  background: #c8d0de;
+  background: var(--knob);
   border-radius: 50%;
   transition: transform 0.2s;
   box-shadow: var(--shadow-sm);
@@ -521,7 +616,7 @@ body {
    Header cells only. Static pages use <th scope="row"> for product names, which must
    not inherit the uppercase transform or the header background */
 .compare-table thead th {
-  background: #0f1525;
+  background: var(--thead-bg);
   border-bottom: 2px solid var(--border);
   border-right: 1px solid var(--border);
   padding: 7px 12px;
@@ -594,7 +689,7 @@ body {
 
 /* 商品名稱開頭的 ｛型號｝ 加粗、其餘規格降為次要色，方便掃讀
    Bold the leading ｛model｝ in product names and mute the rest for scanning */
-.td-name .model { font-weight: 600; color: #f1f5f9; }
+.td-name .model { font-weight: 600; color: var(--text-strong); }
 .td-name .spec { color: var(--text-secondary); }
 
 .td-price {
@@ -687,8 +782,8 @@ body {
   border: 1px solid var(--orange-border);
 }
 
-.row-new { background: rgba(96, 165, 250, 0.05); }
-.row-removed { background: rgba(251, 146, 60, 0.05); }
+.row-new { background: var(--row-new-bg); }
+.row-removed { background: var(--row-removed-bg); }
 
 /* ── 空狀態 Empty state ── */
 .group-empty {

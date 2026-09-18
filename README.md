@@ -80,7 +80,7 @@ uv run python main.py build            # 由最新 ALL 快照產生靜態網站�
 ├── docs/                   # 前端原始資源（非發布目錄）
 │   ├── compare.html        # 歷史比價工具（SPA）
 │   ├── style.css / pages.css
-│   ├── app.js
+│   ├── app.js / theme.js   # 比價工具邏輯／主題開關
 │   ├── og-image.png / favicon.svg
 │   └── crawl_history.json  # 爬取歷史清單（自動產生）
 ├── _site/                  # build 產物（gitignored，Actions 部署來源）
@@ -129,6 +129,7 @@ debug HTML 位置：`output/debug/coolpc_YYYYMMDD_HHMMSS.html`（時間戳對齊
 
 - 首頁與分類頁以**最新一份 ALL 快照**為準，並與至少 20 小時前（通常是前一日同時段）的 ALL 快照比較漲跌；MAIN 快照只會出現在比價工具，因此 11:05 與 19:05 的爬取不會更新首頁的「更新於」時間
 - build 另會產生 `sitemap.xml`、`robots.txt`（明確允許主要 AI 爬蟲）與舊網址 `/docs/index.html` 的轉址頁；所有頁面皆含 GA4 追蹤碼
+- 右上角開關可切換淺色／深色主題，預設深色，選擇存在瀏覽器的 localStorage
 
 ### 部署
 
@@ -256,7 +257,7 @@ Use `--all` to scrape all 30 categories.
 ├── docs/                   # Frontend source assets (not the publish directory)
 │   ├── compare.html        # Historical comparison tool (SPA)
 │   ├── style.css / pages.css
-│   ├── app.js
+│   ├── app.js / theme.js   # comparison tool logic / theme toggle
 │   ├── og-image.png / favicon.svg
 │   └── crawl_history.json  # Crawl history list (auto-generated)
 ├── _site/                  # Build output (gitignored, deployed by Actions)
@@ -304,6 +305,7 @@ The homepage and category pages are **static HTML generated at build time**, wit
 
 - The homepage and category pages use the **newest ALL snapshot** and diff it against the newest ALL snapshot at least 20 hours older (normally the same slot on the previous day); MAIN snapshots only appear in the comparison tool, so the 11:05 and 19:05 crawls don't move the "updated at" time on the homepage
 - The build also emits `sitemap.xml`, `robots.txt` (explicitly allowing major AI crawlers) and a redirect page for the legacy `/docs/index.html` URL; every page includes the GA4 tag
+- A switch in the top-right corner toggles the light / dark theme; dark is the default and the choice is kept in the browser's localStorage
 
 ### Deployment
 

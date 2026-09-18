@@ -7,6 +7,9 @@
   <meta name="description" content="選擇任意兩個時間點的快照，比對原價屋（CoolPC）電腦零組件在該期間的漲跌幅度、新上架與下架情況。涵蓋 CPU、顯示卡、SSD、記憶體等全分類，開源免費。">
   <meta name="author" content="TroyWhiteTW">
   <meta name="theme-color" content="#0b0f1a">
+  <!-- 首次繪製前還原使用者選的主題，避免深淺閃爍；預設深色，切換邏輯在 theme.js
+       Restore the saved theme before first paint to avoid a flash; dark by default, toggle logic lives in theme.js -->
+  <script>try{localStorage.getItem('theme')==='light'&&(document.documentElement.dataset.theme='light')}catch{}</script>
   <link rel="canonical" href="https://troywhitetw.github.io/coolpc-crawler/compare.html">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -55,7 +58,10 @@
           <span class="brand-sub">CoolPC Price Tracker</span>
         </div>
       </a>
-      <div class="header-meta" id="headerMeta"></div>
+      <div class="header-right">
+        <div class="header-meta" id="headerMeta"></div>
+        <button class="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="淺色模式" title="切換淺色／深色模式"></button>
+      </div>
     </div>
   </header>
 
@@ -180,8 +186,10 @@
     <p class="footer-note">本站為非官方的開源價格記錄工具，與原價屋（欣亞數位）無任何隸屬關係。價格僅供參考，實際售價與供貨狀況請以原價屋官方網站為準。</p>
   </footer>
 
-  <!-- defer 確保 PapaParse 先於 app.js 執行 defer keeps PapaParse ahead of app.js -->
-  <script src="app.js" defer></script>
+  <!-- PapaParse 以 defer 載入、app.js 為 module，皆在解析完成後依文件順序執行
+       PapaParse is deferred and app.js is a module; both run in document order after parsing -->
+  <script type="module" src="app.js"></script>
+  <script type="module" src="theme.js"></script>
 
   <!-- Analytics 置於文件尾端，避免阻塞首屏渲染 Analytics at end of body to avoid blocking first paint -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>

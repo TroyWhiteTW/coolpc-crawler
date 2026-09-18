@@ -1,358 +1,18 @@
+// 歷史比價工具：讀取 crawl_history.json 與兩份 CSV 快照，在瀏覽器端比對漲跌
+// Historical comparison tool: loads crawl_history.json plus two CSV snapshots and diffs them client-side
+
 // ── 狀態 State ──
-let dataA = [];
-let dataB = [];
-let showAll = false;
 let compareResults = [];
-let historyEntries = [];
-
-// 檔名→模式對照表 Filename to mode lookup
+let showAll = false;
+// 檔名 → 模式 File → mode
 const modeMap = new Map();
-
-// 按年月索引的資料結構 Indexed by year → month → entries
-// { "2026": { "04": [{file, mode, day, time}, ...], ... }, ... }
-let indexedData = {};
-
-// ── DOM 元素 Elements ──
-const btnCompare = document.getElementById('btnCompare');
-const loadingOverlay = document.getElementById('loadingOverlay');
-const mainContent = document.getElementById('mainContent');
-const groupsSection = document.getElementById('groupsSection');
-const toggleAll = document.getElementById('toggleAll');
-const headerMeta = document.getElementById('headerMeta');
-const modeNotice = document.getElementById('modeNotice');
-const toggleExpand = document.getElementById('toggleExpand');
-
-// 分級選單元素 Cascading select elements
-const selectors = {
-  A: {
-    year: document.getElementById('selectA_year'),
-    month: document.getElementById('selectA_month'),
-    entry: document.getElementById('selectA_entry'),
-  },
-  B: {
-    year: document.getElementById('selectB_year'),
-    month: document.getElementById('selectB_month'),
-    entry: document.getElementById('selectB_entry'),
-  },
-};
-
-// ── 工具函式 Utilities ──
-
-// 解析檔名 Parse filename into components
-function parseFilename(filename) {
-  const m = filename.match(/coolpc_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
-  if (!m) return null;
-  return {
-    year: m[1],
-    month: m[2],
-    day: m[3],
-    hour: m[4],
-    min: m[5],
-    sec: m[6],
-  };
-}
-
-// 格式化為日期時間顯示 Format entry for display in the entry dropdown
-function formatEntryLabel(parsed, mode) {
-  return parsed.day + '日 ' + parsed.hour + ':' + parsed.min + ' [' + mode + ']';
-}
-
-// 格式化價格 Format price with comma separator
-function formatPrice(price) {
-  if (price == null || price === '') return '—';
-  return '$' + Number(price).toLocaleString();
-}
-
-// 格式化價差 Format price difference with sign
-function formatDiff(diff) {
-  if (diff === 0) return '0';
-  const sign = diff > 0 ? '+' : '-';
-  return sign + '$' + Math.abs(diff).toLocaleString();
-}
-
-// 格式化漲跌幅百分比 Format percentage change
-function formatPct(pct) {
-  if (pct == null) return '—';
-  if (pct === 0) return '0%';
-  const sign = pct > 0 ? '+' : '';
-  return sign + pct.toFixed(1) + '%';
-}
-
-// ── CSV 載入 Load CSV via PapaParse ──
-// 已下載 CSV 快取，避免重複切換 A/B 時重抓
-// CSV cache to avoid re-downloading when switching A/B selections
+// 年 → 月 → 快照清單（最新在前）Year → month → entries, newest first
+let index = {};
+// 已載入或載入中的 CSV，切換 A/B 不重抓；失敗會移除以便重試
+// Loaded or in-flight CSVs so switching A/B never refetches; failures are evicted for retry
 const csvCache = new Map();
-
-function loadCSV(filename) {
-  if (csvCache.has(filename)) {
-    return Promise.resolve(csvCache.get(filename));
-  }
-  return new Promise((resolve, reject) => {
-    // CSV 位於站台根目錄的 output/，與 compare.html 同層
-    // CSVs live in output/ at the site root, alongside compare.html
-    const url = 'output/' + filename;
-    Papa.parse(url, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        csvCache.set(filename, results.data);
-        resolve(results.data);
-      },
-      error: (err) => reject(err),
-    });
-  });
-}
-
-// ── 建立索引 Build year/month index from history entries ──
-function buildIndex() {
-  indexedData = {};
-  modeMap.clear();
-  historyEntries.forEach((entry) => {
-    const p = parseFilename(entry.file);
-    if (!p) return;
-    modeMap.set(entry.file, entry.mode);
-    if (!indexedData[p.year]) indexedData[p.year] = {};
-    if (!indexedData[p.year][p.month]) indexedData[p.year][p.month] = [];
-    indexedData[p.year][p.month].push({
-      file: entry.file,
-      mode: entry.mode,
-      ...p,
-    });
-  });
-}
-
-// ── 填入年份選單 Populate year dropdown ──
-function populateYears(side) {
-  const sel = selectors[side].year;
-  sel.innerHTML = '';
-  // 年份降序 Years descending
-  const years = Object.keys(indexedData).sort().reverse();
-  years.forEach((y) => sel.add(new Option(y + ' 年', y)));
-}
-
-// ── 填入月份選單 Populate month dropdown ──
-function populateMonths(side) {
-  const sel = selectors[side].month;
-  const year = selectors[side].year.value;
-  sel.innerHTML = '';
-  if (!indexedData[year]) return;
-  const months = Object.keys(indexedData[year]).sort().reverse();
-  months.forEach((m) => sel.add(new Option(m + ' 月', m)));
-}
-
-// ── 填入具體時間選單 Populate entry dropdown ──
-function populateEntries(side) {
-  const sel = selectors[side].entry;
-  const year = selectors[side].year.value;
-  const month = selectors[side].month.value;
-  sel.innerHTML = '';
-  if (!indexedData[year] || !indexedData[year][month]) return;
-  // 已按檔名降序排列（最新在前）Entries already sorted desc (newest first)
-  indexedData[year][month].forEach((e) => {
-    sel.add(new Option(formatEntryLabel(e, e.mode), e.file));
-  });
-}
-
-// ── 初始化某側的選單 Initialize one side's cascading selects ──
-function initSide(side) {
-  populateYears(side);
-  populateMonths(side);
-  populateEntries(side);
-}
-
-// ── 串聯事件：年份變動 → 更新月份 → 更新項目 Year change → update months → entries ──
-function bindCascade(side) {
-  selectors[side].year.addEventListener('change', () => {
-    populateMonths(side);
-    populateEntries(side);
-  });
-  selectors[side].month.addEventListener('change', () => {
-    populateEntries(side);
-  });
-}
-
-// ── 取得選定檔名 Get selected filename for a side ──
-function getSelectedFile(side) {
-  return selectors[side].entry.value;
-}
-
-function getMode(filename) {
-  return modeMap.get(filename) || 'MAIN';
-}
-
-// ── 初始化 Initialize ──
-async function init() {
-  try {
-    const resp = await fetch('crawl_history.json');
-    historyEntries = await resp.json();
-
-    if (historyEntries.length === 0) {
-      headerMeta.textContent = '尚無資料';
-      return;
-    }
-
-    buildIndex();
-
-    // 初始化 B 側（右）：預設最新 Initialize B (right): default to newest
-    initSide('B');
-
-    // 初始化 A 側（左）：預設第六筆 Initialize A (left): default to 6th entry
-    initSide('A');
-    if (selectors.A.entry.options.length > 5) {
-      selectors.A.entry.selectedIndex = 5;
-    } else {
-      selectors.A.entry.selectedIndex = selectors.A.entry.options.length - 1;
-    }
-
-    bindCascade('A');
-    bindCascade('B');
-
-    headerMeta.textContent = '共 ' + historyEntries.length + ' 筆歷史紀錄';
-
-    await runComparison();
-  } catch (err) {
-    console.error('Failed to load crawl history:', err);
-    headerMeta.textContent = '載入失敗';
-  }
-}
-
-// ── 執行比較 Run comparison ──
-async function runComparison() {
-  const fileA = getSelectedFile('A');
-  const fileB = getSelectedFile('B');
-  if (!fileA || !fileB) return;
-
-  mainContent.style.display = 'none';
-  loadingOverlay.classList.add('active');
-
-  try {
-    [dataA, dataB] = await Promise.all([loadCSV(fileA), loadCSV(fileB)]);
-    buildComparison(fileA, fileB);
-  } catch (err) {
-    console.error('Failed to load CSV:', err);
-    alert('載入 CSV 失敗，請確認檔案是否存在。');
-  } finally {
-    loadingOverlay.classList.remove('active');
-  }
-}
-
-// 商品識別鍵，須與 crawler/builder.py 的 _row_key() 一致。同名商品會列在不同子分類
-// （同型號螢幕分列 27 吋與 32 吋區塊，價差 7 倍），只用 name 會互相覆蓋產生假漲跌。
-// Product identity key; must match _row_key() in crawler/builder.py. The same name appears
-// under different subcategories (7x apart in price), so name alone would collide.
-function rowKey(row) {
-  return (row.category || '') + ' ' + (row.subcategory || '') + ' ' + row.name;
-}
-
-// 以「識別鍵 + 第幾次出現」建表，須與 crawler/builder.py 的 _occurrence_keys() 一致。
-// 同一子分類內也會重複列出同名商品且價格不同，故以出現序配對：第 n 筆對第 n 筆。
-// 同時把出現過的分類收進 cats。
-// Index by identity key plus nth occurrence; must match _occurrence_keys() in
-// crawler/builder.py. The same name repeats within one subcategory at different prices,
-// so rows pair by occurrence order. Also collects the categories seen into cats.
-function buildKeyedMap(data, cats) {
-  const map = new Map();
-  const seen = new Map();
-  data.forEach((row) => {
-    if (row.name && row.price) {
-      const k = rowKey(row);
-      const n = seen.get(k) || 0;
-      seen.set(k, n + 1);
-      map.set(k + ' #' + n, row);
-      cats.add(row.category);
-    }
-  });
-  return map;
-}
-
-// ── 建立比較資料 Build comparison data ──
-function buildComparison(fileA, fileB) {
-  const catsA = new Set();
-  const catsB = new Set();
-  const mapA = buildKeyedMap(dataA, catsA);
-  const mapB = buildKeyedMap(dataB, catsB);
-
-  // 取分類交集，避免 MAIN/ALL 模式差異導致誤判
-  // Intersect categories to avoid MAIN/ALL mode mismatch
-  const sharedCats = new Set([...catsA].filter((c) => catsB.has(c)));
-  const modeA = getMode(fileA);
-  const modeB = getMode(fileB);
-  const excludedCats = new Set([
-    ...[...catsA].filter((c) => !sharedCats.has(c)),
-    ...[...catsB].filter((c) => !sharedCats.has(c)),
-  ]);
-
-  if (excludedCats.size > 0) {
-    modeNotice.style.display = 'block';
-    modeNotice.innerHTML =
-      '<div class="mode-notice-inner">⚠ 舊(A) 為 ' + escapeHtml(modeA) + ' 模式，新(B) 為 ' + escapeHtml(modeB) +
-      ' 模式，已自動排除非共同分類（' + [...excludedCats].map(escapeHtml).join('、') +
-      '），僅比較共同存在的 ' + sharedCats.size + ' 個分類。</div>';
-  } else {
-    modeNotice.style.display = 'none';
-  }
-
-  const allKeys = new Set();
-  mapA.forEach((row, key) => { if (sharedCats.has(row.category)) allKeys.add(key); });
-  mapB.forEach((row, key) => { if (sharedCats.has(row.category)) allKeys.add(key); });
-
-  compareResults = [];
-  allKeys.forEach((key) => {
-    const a = mapA.get(key);
-    const b = mapB.get(key);
-
-    if (a && !sharedCats.has(a.category)) return;
-    if (b && !sharedCats.has(b.category)) return;
-
-    const name = (a || b).name;
-    const priceA = a ? Number(a.price) : null;
-    const priceB = b ? Number(b.price) : null;
-    const category = (a || b).category || '';
-
-    let diff = null;
-    let status = 'same';
-
-    if (priceA != null && priceB != null) {
-      // 價差 = 新(B) - 舊(A)，正數表示漲價 Diff = new(B) - old(A), positive = price up
-      diff = priceB - priceA;
-      if (diff > 0) status = 'up';
-      else if (diff < 0) status = 'down';
-    } else if (priceA == null && priceB != null) {
-      // 舊沒有、新有 = 新增商品 Only in new(B) = newly added
-      status = 'new';
-    } else if (priceA != null && priceB == null) {
-      // 舊有、新沒有 = 下架商品 Only in old(A) = removed
-      status = 'removed';
-    }
-
-    const remarkA = a ? (a.remark || '') : '';
-    const remarkB = b ? (b.remark || '') : '';
-    const remark = remarkB || remarkA;
-    // 漲跌幅百分比 Percentage change based on old price
-    let pct = null;
-    if (diff != null && priceA != null && priceA !== 0) {
-      pct = (diff / priceA) * 100;
-    }
-
-    compareResults.push({ name, category, priceA, priceB, diff, pct, remark, status });
-  });
-
-  updateStats();
-  renderGroups();
-  mainContent.style.display = 'block';
-}
-
-// ── 統計 Stats ──
-function updateStats() {
-  const r = compareResults;
-  document.getElementById('statTotal').textContent = r.length;
-  document.getElementById('statChanged').textContent = r.filter((x) => x.status !== 'same').length;
-  document.getElementById('statUp').textContent = r.filter((x) => x.status === 'up').length;
-  document.getElementById('statDown').textContent = r.filter((x) => x.status === 'down').length;
-  document.getElementById('statNew').textContent = r.filter((x) => x.status === 'new').length;
-  document.getElementById('statRemoved').textContent = r.filter((x) => x.status === 'removed').length;
-}
+// 各分類的摺疊狀態，重新渲染時沿用 Collapsed state per category, kept across re-renders
+const collapsedState = new Map();
 
 // 分類顯示順序：主要零組件優先，名單須與 crawler/models.py 的 MAIN_CATEGORIES 一致
 // Category order: main PC components first; keep in sync with MAIN_CATEGORIES in crawler/models.py
@@ -360,169 +20,289 @@ const PRIMARY_CATEGORIES = [
   '處理器 CPU', '主機板 MB', '記憶體 RAM', '固態硬碟 M.2｜SSD', '2.5/3.5 傳統內接硬碟HDD',
   '散熱器｜散熱墊｜散熱膏', '封閉式｜開放式水冷', '顯示卡VGA', 'CASE 機殼(+電源)', '電源供應器',
 ];
+const STATUS_ORDER = { up: 0, down: 1, new: 2, removed: 3, same: 4 };
+const STATUS_LABEL = { up: '▲ 漲價', down: '▼ 降價', same: '— 持平', new: '✦ 新增', removed: '✕ 下架' };
 
-// ── 記錄各分類的摺疊狀態 Track collapsed state per category ──
-const collapsedState = new Map();
+// ── DOM 元素 Elements ──
+const $ = (id) => document.getElementById(id);
+const btnCompare = $('btnCompare');
+const loadingOverlay = $('loadingOverlay');
+const mainContent = $('mainContent');
+const groupsSection = $('groupsSection');
+const toggleAll = $('toggleAll');
+const toggleExpand = $('toggleExpand');
+const headerMeta = $('headerMeta');
+const modeNotice = $('modeNotice');
+const selectors = {
+  A: { year: $('selectA_year'), month: $('selectA_month'), entry: $('selectA_entry') },
+  B: { year: $('selectB_year'), month: $('selectB_month'), entry: $('selectB_entry') },
+};
 
-// ── 渲染分組 Render category groups ──
-function renderGroups() {
-  // 儲存當前摺疊狀態 Save current collapsed state before re-render
-  groupsSection.querySelectorAll('.category-group').forEach((g) => {
-    const name = g.dataset.category;
-    if (name) collapsedState.set(name, g.classList.contains('collapsed'));
-  });
+// ── 工具函式 Utilities ──
+const FILE_RE = /coolpc_(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})_(?<hour>\d{2})(?<min>\d{2})(?<sec>\d{2})/;
+const parseFilename = (file) => FILE_RE.exec(file)?.groups ?? null;
+const money = (n) => `$${Number(n).toLocaleString()}`;
+const formatPrice = (price) => (price == null || price === '' ? '—' : money(price));
+const formatDiff = (diff) => (diff === 0 ? '0' : `${diff > 0 ? '+' : '-'}${money(Math.abs(diff))}`);
+const formatPct = (pct) => (pct == null ? '—' : pct === 0 ? '0%' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`);
+const trend = (diff) => (diff > 0 ? 'up' : diff < 0 ? 'down' : 'same');
 
-  groupsSection.innerHTML = '';
-
-  const grouped = new Map();
-  compareResults.forEach((r) => {
-    if (!grouped.has(r.category)) grouped.set(r.category, []);
-    grouped.get(r.category).push(r);
-  });
-
-  grouped.forEach((items) => {
-    const order = { up: 0, down: 1, new: 2, removed: 3, same: 4 };
-    items.sort((a, b) => {
-      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-      return a.name.localeCompare(b.name);
-    });
-  });
-
-  // 主要零組件優先，其餘依異動數遞減 Main components first, the rest by change count
-  const changedOf = (items) => items.filter((r) => r.status !== 'same').length;
-  const rank = (cat) => {
-    const i = PRIMARY_CATEGORIES.indexOf(cat);
-    return i === -1 ? PRIMARY_CATEGORIES.length : i;
-  };
-  const ordered = [...grouped.entries()].sort(([ca, ia], [cb, ib]) =>
-    rank(ca) - rank(cb) || changedOf(ib) - changedOf(ia) || ca.localeCompare(cb));
-
-  ordered.forEach(([category, items]) => {
-    const changedCount = changedOf(items);
-    const filteredItems = showAll ? items : items.filter((r) => r.status !== 'same');
-
-    const group = document.createElement('div');
-    group.className = 'category-group';
-    group.dataset.category = category;
-    const isCollapsed = collapsedState.has(category) ? collapsedState.get(category) : true;
-    if (isCollapsed) group.classList.add('collapsed');
-
-    const header = document.createElement('div');
-    header.className = 'category-header';
-    header.innerHTML =
-      '<div class="category-header-left">' +
-        '<span class="category-arrow">▼</span>' +
-        '<span class="category-name">' + escapeHtml(category) + '</span>' +
-      '</div>' +
-      '<div class="category-badges">' +
-        (changedCount > 0
-          ? '<span class="category-count has-changes">' + changedCount + ' 異動</span>'
-          : '') +
-        '<span class="category-count">' + items.length + ' 項</span>' +
-      '</div>';
-
-    header.addEventListener('click', () => {
-      group.classList.toggle('collapsed');
-    });
-
-    const body = document.createElement('div');
-    body.className = 'category-body';
-
-    if (filteredItems.length > 0) {
-      const tableWrap = document.createElement('div');
-      tableWrap.className = 'table-scroll';
-
-      const table = document.createElement('table');
-      table.className = 'compare-table';
-      table.innerHTML =
-        '<thead><tr>' +
-          '<th class="th-name">商品名稱</th>' +
-          '<th class="th-remark">備註</th>' +
-          '<th class="th-price">舊 (A)</th>' +
-          '<th class="th-price">新 (B)</th>' +
-          '<th class="th-diff">價差</th>' +
-          '<th class="th-pct">%</th>' +
-          '<th class="th-status">狀態</th>' +
-        '</tr></thead>';
-
-      const tbody = document.createElement('tbody');
-      filteredItems.forEach((r) => {
-        const tr = document.createElement('tr');
-        if (r.status === 'new') tr.className = 'row-new';
-        else if (r.status === 'removed') tr.className = 'row-removed';
-
-        tr.innerHTML =
-          '<td class="td-name">' + nameHtml(r.name) + '</td>' +
-          '<td class="td-remark">' + escapeHtml(r.remark) + '</td>' +
-          '<td class="td-price' + (r.priceA == null ? ' empty' : '') + '">' + formatPrice(r.priceA) + '</td>' +
-          '<td class="td-price' + (r.priceB == null ? ' empty' : '') + '">' + formatPrice(r.priceB) + '</td>' +
-          '<td class="td-diff ' + (r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : 'same') + '">' +
-            (r.diff != null ? formatDiff(r.diff) : '—') + '</td>' +
-          '<td class="td-pct ' + (r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : 'same') + '">' +
-            formatPct(r.pct) + '</td>' +
-          '<td class="td-status">' + statusBadge(r.status) + '</td>';
-
-        tbody.appendChild(tr);
-      });
-
-      table.appendChild(tbody);
-      tableWrap.appendChild(table);
-      body.appendChild(tableWrap);
-    } else {
-      body.innerHTML = '<div class="group-empty">無異動商品</div>';
-    }
-
-    group.append(header, body);
-    groupsSection.appendChild(group);
-  });
-}
-
-function statusBadge(status) {
-  const labels = {
-    up: '▲ 漲價',
-    down: '▼ 降價',
-    same: '— 持平',
-    new: '✦ 新增',
-    removed: '✕ 下架',
-  };
-  return '<span class="badge badge-' + status + '">' + labels[status] + '</span>';
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 
 // 商品名稱開頭的 ｛型號｝（原價屋用全形括號，半形也接受）加粗、其餘規格降為次要色，
 // 與 crawler/builder.py 的 _name_html() 一致
 // Bold the leading ｛model｝ (CoolPC uses full-width braces; ASCII accepted too) and mute
 // the rest, matching _name_html() in crawler/builder.py
-function nameHtml(name) {
-  const m = /^\s*[{｛]([^}｝]*)[}｝]\s*([\s\S]*)$/.exec(name || '');
+const MODEL_RE = /^\s*[{｛]([^}｝]*)[}｝]\s*([\s\S]*)$/;
+const nameHtml = (name) => {
+  const m = MODEL_RE.exec(name ?? '');
   if (!m) return escapeHtml(name);
-  return '<span class="model">' + escapeHtml(m[1]) + '</span>' +
-    (m[2] ? ' <span class="spec">' + escapeHtml(m[2]) + '</span>' : '');
-}
+  return `<span class="model">${escapeHtml(m[1])}</span>${m[2] ? ` <span class="spec">${escapeHtml(m[2])}</span>` : ''}`;
+};
 
-// ── 全部展開/收合 Expand/Collapse all ──
-function setAllGroups(collapsed) {
-  groupsSection.querySelectorAll('.category-group').forEach((g) => {
-    g.classList.toggle('collapsed', collapsed);
-  });
-}
+// ── CSV 載入 Load CSV via PapaParse ──
+const loadCSV = (file) => {
+  if (!csvCache.has(file)) {
+    csvCache.set(file, new Promise((resolve, reject) => {
+      // CSV 位於站台根目錄的 output/ CSVs live in output/ at the site root
+      Papa.parse(`output/${file}`, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: ({ data }) => resolve(data),
+        error: (err) => { csvCache.delete(file); reject(err); },
+      });
+    }));
+  }
+  return csvCache.get(file);
+};
 
-// ── 事件綁定 Event bindings ──
+// ── 快照選單 Snapshot selectors ──
+const buildIndex = (entries) => {
+  index = {};
+  modeMap.clear();
+  for (const { file, mode } of entries) {
+    const p = parseFilename(file);
+    if (!p) continue;
+    modeMap.set(file, mode);
+    ((index[p.year] ??= {})[p.month] ??= []).push({ file, mode, ...p });
+  }
+};
+
+const desc = (obj) => Object.keys(obj).sort().reverse();
+const fill = (select, pairs) => select.replaceChildren(...pairs.map(([text, value]) => new Option(text, value)));
+const populateYears = (side) => fill(selectors[side].year, desc(index).map((y) => [`${y} 年`, y]));
+const populateMonths = (side) => {
+  const { year, month } = selectors[side];
+  fill(month, desc(index[year.value] ?? {}).map((m) => [`${m} 月`, m]));
+};
+const populateEntries = (side) => {
+  const { year, month, entry } = selectors[side];
+  const list = index[year.value]?.[month.value] ?? [];
+  fill(entry, list.map((e) => [`${e.day}日 ${e.hour}:${e.min} [${e.mode}]`, e.file]));
+};
+const initSide = (side) => {
+  populateYears(side);
+  populateMonths(side);
+  populateEntries(side);
+};
+// 年 → 月 → 快照三級連動 Year → month → entry cascade
+const bindCascade = (side) => {
+  const { year, month } = selectors[side];
+  year.addEventListener('change', () => { populateMonths(side); populateEntries(side); });
+  month.addEventListener('change', () => populateEntries(side));
+};
+const selectedFile = (side) => selectors[side].entry.value;
+const modeOf = (file) => modeMap.get(file) ?? 'MAIN';
+
+// ── 商品識別 Product identity ──
+// 商品識別鍵，須與 crawler/builder.py 的 _row_key() 一致。同名商品會列在不同子分類
+// （同型號螢幕分列 27 吋與 32 吋區塊，價差 7 倍），只用 name 會互相覆蓋產生假漲跌。
+// Product identity key; must match _row_key() in crawler/builder.py. The same name appears
+// under different subcategories (7x apart in price), so name alone would collide.
+const rowKey = (r) => `${r.category || ''} ${r.subcategory || ''} ${r.name}`;
+
+// 以「識別鍵 + 第幾次出現」建表，須與 crawler/builder.py 的 _occurrence_keys() 一致：每一列都推進
+// 出現序，只有同時有名稱與價格的列才進表；同一子分類內同名商品以出現序配對，第 n 筆對第 n 筆。
+// 一併回傳出現過的分類。
+// Index by identity key plus nth occurrence, matching _occurrence_keys() in crawler/builder.py: every
+// row advances the counter, only rows with both a name and a price are stored; duplicates within one
+// subcategory pair by occurrence order. Also returns the categories seen.
+const buildKeyedMap = (rows) => {
+  const map = new Map();
+  const seen = new Map();
+  const cats = new Set();
+  for (const row of rows) {
+    const k = rowKey(row);
+    const n = seen.get(k) ?? 0;
+    seen.set(k, n + 1);
+    if (row.name && row.price) {
+      map.set(`${k} #${n}`, row);
+      cats.add(row.category);
+    }
+  }
+  return { map, cats };
+};
+
+// ── 比對 Comparison ──
+const buildComparison = (fileA, fileB, dataA, dataB) => {
+  const { map: mapA, cats: catsA } = buildKeyedMap(dataA);
+  const { map: mapB, cats: catsB } = buildKeyedMap(dataB);
+
+  // 只比較兩邊都有的分類，避免 MAIN/ALL 模式差異被算成新增或下架
+  // Compare only categories present on both sides so MAIN/ALL differences aren't read as adds/removals
+  const shared = new Set([...catsA].filter((c) => catsB.has(c)));
+  const excluded = [...new Set([...catsA, ...catsB])].filter((c) => !shared.has(c));
+  modeNotice.style.display = excluded.length ? 'block' : 'none';
+  if (excluded.length) {
+    modeNotice.innerHTML = `<div class="mode-notice-inner">⚠ 舊(A) 為 ${escapeHtml(modeOf(fileA))} 模式，新(B) 為 ${escapeHtml(modeOf(fileB))} 模式，已自動排除非共同分類（${excluded.map(escapeHtml).join('、')}），僅比較共同存在的 ${shared.size} 個分類。</div>`;
+  }
+
+  compareResults = [];
+  for (const key of new Set([...mapA.keys(), ...mapB.keys()])) {
+    const a = mapA.get(key);
+    const b = mapB.get(key);
+    const { name, category = '' } = a ?? b;
+    if (!shared.has(category)) continue;
+    const priceA = a ? Number(a.price) : null;
+    const priceB = b ? Number(b.price) : null;
+    // 價差 = 新(B) − 舊(A)，正數為漲價；只在一邊出現即為新增或下架
+    // diff = new(B) − old(A), positive means up; present on one side only means new or removed
+    const diff = priceA != null && priceB != null ? priceB - priceA : null;
+    const status = diff != null ? trend(diff) : priceB != null ? 'new' : 'removed';
+    const pct = diff != null && priceA ? (diff / priceA) * 100 : null;
+    compareResults.push({ name, category, priceA, priceB, diff, pct, status, remark: b?.remark || a?.remark || '' });
+  }
+
+  updateStats();
+  renderGroups();
+  mainContent.style.display = 'block';
+};
+
+const runComparison = async () => {
+  const fileA = selectedFile('A');
+  const fileB = selectedFile('B');
+  if (!fileA || !fileB) return;
+  mainContent.style.display = 'none';
+  loadingOverlay.classList.add('active');
+  try {
+    const [dataA, dataB] = await Promise.all([loadCSV(fileA), loadCSV(fileB)]);
+    buildComparison(fileA, fileB, dataA, dataB);
+  } catch (err) {
+    console.error('Failed to load CSV:', err);
+    // 不用 alert 阻塞，改在頁首提示並保留選單讓使用者重試
+    // No blocking alert: hint in the header and keep the selectors so the user can retry
+    headerMeta.textContent = 'CSV 載入失敗，請重新比較';
+  } finally {
+    loadingOverlay.classList.remove('active');
+  }
+};
+
+// ── 統計 Stats ──
+const updateStats = () => {
+  const counts = { Total: compareResults.length, Changed: 0, Up: 0, Down: 0, New: 0, Removed: 0 };
+  for (const { status } of compareResults) {
+    if (status === 'same') continue;
+    counts.Changed += 1;
+    counts[status[0].toUpperCase() + status.slice(1)] += 1;
+  }
+  for (const [key, n] of Object.entries(counts)) $(`stat${key}`).textContent = n;
+};
+
+// ── 渲染 Rendering ──
+const TABLE_HEAD = '<thead><tr><th class="th-name">商品名稱</th><th class="th-remark">備註</th>'
+  + '<th class="th-price">舊 (A)</th><th class="th-price">新 (B)</th><th class="th-diff">價差</th>'
+  + '<th class="th-pct">%</th><th class="th-status">狀態</th></tr></thead>';
+
+// 儲存格順序固定：名稱、備註、A 價、B 價、價差、幅度、狀態，手機版 CSS 以 nth-child 定位 A/B 價
+// Cell order is fixed (name, remark, price A, price B, diff, pct, status); mobile CSS positions the prices by nth-child
+const rowHtml = (r) => {
+  const t = trend(r.diff);
+  const rowClass = r.status === 'new' ? ' class="row-new"' : r.status === 'removed' ? ' class="row-removed"' : '';
+  return `<tr${rowClass}>`
+    + `<td class="td-name">${nameHtml(r.name)}</td>`
+    + `<td class="td-remark">${escapeHtml(r.remark)}</td>`
+    + `<td class="td-price${r.priceA == null ? ' empty' : ''}">${formatPrice(r.priceA)}</td>`
+    + `<td class="td-price${r.priceB == null ? ' empty' : ''}">${formatPrice(r.priceB)}</td>`
+    + `<td class="td-diff ${t}">${r.diff != null ? formatDiff(r.diff) : '—'}</td>`
+    + `<td class="td-pct ${t}">${formatPct(r.pct)}</td>`
+    + `<td class="td-status"><span class="badge badge-${r.status}">${STATUS_LABEL[r.status]}</span></td>`
+    + '</tr>';
+};
+const tableHtml = (rows) => `<div class="table-scroll"><table class="compare-table">${TABLE_HEAD}<tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`;
+
+const changedOf = (items) => items.filter((r) => r.status !== 'same').length;
+const rank = (cat) => {
+  const i = PRIMARY_CATEGORIES.indexOf(cat);
+  return i === -1 ? PRIMARY_CATEGORIES.length : i;
+};
+
+const renderGroups = () => {
+  // 記住目前摺疊狀態再重繪 Remember collapsed state before re-rendering
+  for (const g of groupsSection.querySelectorAll('.category-group')) {
+    collapsedState.set(g.dataset.category, g.classList.contains('collapsed'));
+  }
+
+  // 主要零組件優先，其餘依異動數遞減；組內依狀態再依名稱排序
+  // Main components first, the rest by change count; within a group by status then name
+  const grouped = [...Map.groupBy(compareResults, (r) => r.category)]
+    .sort(([ca, ia], [cb, ib]) => rank(ca) - rank(cb) || changedOf(ib) - changedOf(ia) || ca.localeCompare(cb));
+
+  groupsSection.innerHTML = grouped.map(([category, items]) => {
+    items.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.name.localeCompare(b.name));
+    const changed = changedOf(items);
+    const shown = showAll ? items : items.filter((r) => r.status !== 'same');
+    const collapsed = collapsedState.get(category) ?? true;
+    return `<div class="category-group${collapsed ? ' collapsed' : ''}" data-category="${escapeHtml(category)}">`
+      + '<div class="category-header">'
+      + `<div class="category-header-left"><span class="category-arrow">▼</span><span class="category-name">${escapeHtml(category)}</span></div>`
+      + `<div class="category-badges">${changed ? `<span class="category-count has-changes">${changed} 異動</span>` : ''}<span class="category-count">${items.length} 項</span></div>`
+      + '</div>'
+      + `<div class="category-body">${shown.length ? tableHtml(shown) : '<div class="group-empty">無異動商品</div>'}</div>`
+      + '</div>';
+  }).join('');
+};
+
+// ── 初始化 Initialize ──
+const init = async () => {
+  try {
+    const resp = await fetch('crawl_history.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const entries = await resp.json();
+    if (!entries.length) {
+      headerMeta.textContent = '尚無資料';
+      return;
+    }
+    buildIndex(entries);
+
+    // B（新）預設最新一筆；A（舊）預設同月第 6 筆，不足則取該月最後一筆
+    // B (new) defaults to the newest entry; A (old) to the 6th of the same month, or the month's last
+    initSide('B');
+    initSide('A');
+    selectors.A.entry.selectedIndex = Math.min(5, selectors.A.entry.options.length - 1);
+    bindCascade('A');
+    bindCascade('B');
+
+    headerMeta.textContent = `共 ${entries.length} 筆歷史紀錄`;
+    await runComparison();
+  } catch (err) {
+    console.error('Failed to load crawl history:', err);
+    headerMeta.textContent = '載入失敗';
+  }
+};
+
+// ── 事件 Events ──
+// 分類標題的展開／收合用事件委派，重繪後不必重新綁定
+// Group headers toggle via delegation, so re-rendering never rebinds listeners
+groupsSection.addEventListener('click', (e) => e.target.closest('.category-header')?.parentElement.classList.toggle('collapsed'));
 btnCompare.addEventListener('click', runComparison);
-
 toggleAll.addEventListener('change', () => {
   showAll = toggleAll.checked;
   renderGroups();
 });
-
 toggleExpand.addEventListener('change', () => {
-  setAllGroups(!toggleExpand.checked);
+  for (const g of groupsSection.querySelectorAll('.category-group')) g.classList.toggle('collapsed', !toggleExpand.checked);
 });
 
-// ── 啟動 Init ──
 init();

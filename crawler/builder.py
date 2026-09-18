@@ -583,7 +583,7 @@ def build(args) -> None:
     _write_legacy_redirect()
 
     # 複製既有前端資源 Copy existing frontend assets
-    for asset in ("compare.html", "app.js", "style.css", "pages.css",
+    for asset in ("compare.html", "app.js", "theme.js", "style.css", "pages.css",
                   "crawl_history.json", "og-image.png", "favicon.svg"):
         src = DOCS_DIR / asset
         if src.exists():
