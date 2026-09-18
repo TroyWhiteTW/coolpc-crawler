@@ -10,10 +10,11 @@
   <p>
     最新一次記錄於 <time datetime="{{ updated_iso }}">{{ updated_display }}</time>，
     共收錄 <strong>{{ stats.total }}</strong> 項商品，涵蓋 <strong>{{ categories|length }}</strong> 個分類。
-    與前一次快照（{{ compare_from_display }}）相比，
+    與前一日快照（{{ compare_from_display }}）相比，
     有 <strong>{{ stats.up }}</strong> 項漲價、<strong>{{ stats.down }}</strong> 項降價、
     <strong>{{ stats.new }}</strong> 項新上架、<strong>{{ stats.removed }}</strong> 項下架。
-    價格單位為新台幣（TWD），資料自 {{ history_start }} 起累積，目前共 {{ snapshot_count }} 份快照。
+    價格單位為新台幣（TWD），資料自 {{ history_start }} 起累積，目前共 {{ snapshot_count }} 份快照，
+    可用<a href="{{ root }}compare.html">歷史比價工具</a>任選兩份比對。
   </p>
 </article>
 
@@ -31,7 +32,7 @@
   <h2>近期降價幅度最大的商品</h2>
   <p class="section-note">比較 {{ compare_from_display }} 與 {{ updated_display }} 兩份快照，依降價幅度排序。</p>
   <div class="table-scroll">
-    <table class="compare-table">
+    <table class="compare-table movers-table">
       <caption class="sr-only">近期降價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與跌幅</caption>
       <thead>
         <tr>
@@ -46,10 +47,10 @@
       <tbody>
         {% for p in top_down %}
         <tr>
-          <th scope="row" class="td-name">{{ p.name }}</th>
+          <th scope="row" class="td-name">{{ p.name|name_html }}</th>
           <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
-          <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
-          <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+          <td class="td-price td-prev">${{ '{:,}'.format(p.prev_price) }}</td>
+          <td class="td-price td-cur">${{ '{:,}'.format(p.price) }}</td>
           <td class="td-diff down">-${{ '{:,}'.format(-p.diff) }}</td>
           <td class="td-pct down">{{ '%.1f'|format(p.pct) }}%</td>
         </tr>
@@ -64,7 +65,7 @@
 <section class="movers">
   <h2>近期漲價幅度最大的商品</h2>
   <div class="table-scroll">
-    <table class="compare-table">
+    <table class="compare-table movers-table">
       <caption class="sr-only">近期漲價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與漲幅</caption>
       <thead>
         <tr>
@@ -79,10 +80,10 @@
       <tbody>
         {% for p in top_up %}
         <tr>
-          <th scope="row" class="td-name">{{ p.name }}</th>
+          <th scope="row" class="td-name">{{ p.name|name_html }}</th>
           <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
-          <td class="td-price">${{ '{:,}'.format(p.prev_price) }}</td>
-          <td class="td-price">${{ '{:,}'.format(p.price) }}</td>
+          <td class="td-price td-prev">${{ '{:,}'.format(p.prev_price) }}</td>
+          <td class="td-price td-cur">${{ '{:,}'.format(p.price) }}</td>
           <td class="td-diff up">+${{ '{:,}'.format(p.diff) }}</td>
           <td class="td-pct up">+{{ '%.1f'|format(p.pct) }}%</td>
         </tr>

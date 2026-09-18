@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup, escape
 
 from crawler.models import (CATEGORY_BLURBS, CATEGORY_SHORT, CATEGORY_SLUGS,
                             PRIMARY_SLUGS)
@@ -39,6 +40,14 @@ ITEMLIST_MAX = 100
 MIN_ITEMS_PER_PAGE = 5
 
 TW_TZ = timezone(timedelta(hours=8))
+
+# 首頁漲跌的比較基準至少要比最新快照早這麼久：同日相鄰兩份 ALL 幾乎沒有價差，比前一日才有內容
+# Minimum age of the movers baseline: two same-day ALL snapshots rarely differ, so
+# compare against the previous day instead
+BASELINE_MIN_AGE = timedelta(hours=20)
+# 商品名稱開頭的 ｛型號｝，原價屋用全形括號，半形也一併接受
+# Leading ｛model｝ segment of a product name; CoolPC uses full-width braces, ASCII accepted too
+MODEL_RE = re.compile(r"^\s*[{｛]([^}｝]*)[}｝]\s*(.*)$", re.S)
 
 FAQ = [
     {
@@ -88,12 +97,13 @@ def _load_history() -> List[Dict[str, str]]:
 
 
 def _pick_snapshots(history: List[Dict[str, str]]) -> Tuple[Path, Optional[Path]]:
-    """挑選要呈現的最新快照與其比較基準。
-
-    優先選 ALL 模式（涵蓋 30 分類），並與前一份「同模式」快照比較，
-    避免 MAIN/ALL 分類數不同造成誤判為新增或下架。
-    Prefer ALL snapshots (30 categories) and diff against the previous snapshot of the
-    SAME mode, so MAIN/ALL category differences aren't mistaken for additions/removals.
+    """挑選最新快照與比較基準：ALL 快照達兩份時只用 ALL（避免 MAIN/ALL 分類數不同被誤判為
+    新增或下架），基準取最新一份「至少 BASELINE_MIN_AGE 以前」的 ALL，沒有就退回前一份；
+    ALL 不足兩份則退回全部快照取最新兩份。
+    Pick the newest snapshot and its baseline: with at least two ALL snapshots use only ALL
+    (so MAIN/ALL category differences aren't read as adds/removals), taking the newest one at
+    least BASELINE_MIN_AGE older as the baseline, else the previous one; with fewer than two
+    ALL snapshots fall back to the two newest of any mode.
     """
     existing = [e for e in history if (OUTPUT_DIR / e["file"]).exists()]
     if not existing:
@@ -101,10 +111,18 @@ def _pick_snapshots(history: List[Dict[str, str]]) -> Tuple[Path, Optional[Path]
 
     # history 已按檔名降序（最新在前）History is sorted newest-first by filename
     all_mode = [e for e in existing if e["mode"] == "ALL"]
-    chosen = all_mode if len(all_mode) >= 2 else existing
+    if len(all_mode) >= 2:
+        latest_ts = _parse_timestamp(all_mode[0]["file"])
+        baseline = next(
+            (e for e in all_mode[1:]
+             if latest_ts and _parse_timestamp(e["file"])
+             and latest_ts - _parse_timestamp(e["file"]) >= BASELINE_MIN_AGE),
+            all_mode[1],
+        )
+        return OUTPUT_DIR / all_mode[0]["file"], OUTPUT_DIR / baseline["file"]
 
-    latest = OUTPUT_DIR / chosen[0]["file"]
-    previous = OUTPUT_DIR / chosen[1]["file"] if len(chosen) >= 2 else None
+    latest = OUTPUT_DIR / existing[0]["file"]
+    previous = OUTPUT_DIR / existing[1]["file"] if len(existing) >= 2 else None
     return latest, previous
 
 
@@ -122,24 +140,20 @@ def _to_int(value: str) -> Optional[int]:
 
 
 def _row_key(row: Dict[str, str]) -> Tuple[str, str, str]:
-    """商品識別鍵。原價屋有同名但屬於不同子分類的商品（例如同型號螢幕分列
-    27 吋與 32 吋區塊，價差達 7 倍），單用 name 比對會互相覆蓋而產生假漲跌。
-    Product identity key. CoolPC lists same-named products under different
-    subcategories (e.g. one monitor model under both the 27" and 32" blocks, 7x apart
-    in price); keying on name alone lets them overwrite each other and fabricates
-    price swings."""
+    """商品識別鍵，須與 docs/app.js 的 rowKey() 一致。同名商品會列在不同子分類
+    （同型號螢幕分列 27 吋與 32 吋區塊，價差 7 倍），只用 name 會互相覆蓋產生假漲跌。
+    Product identity key; must match rowKey() in docs/app.js. The same name appears under
+    different subcategories (one monitor in both the 27" and 32" blocks, 7x apart in
+    price), so name alone would collide and fabricate price swings."""
     return (row.get("category", ""), row.get("subcategory", ""), row.get("name", ""))
 
 
 def _occurrence_keys(rows: List[Dict[str, str]]):
-    """為每列產生 (識別鍵, 該鍵的第幾次出現)。
-
-    原價屋在同一子分類內也會重複列出同名商品且價格不同（例如同型號螢幕同時掛
-    $6,399 與 $19,988），單純以識別鍵建表會讓後者覆蓋前者、配對錯位。改以出現序
-    配對：第 n 筆對第 n 筆。
-    Yield (identity key, nth occurrence) per row. CoolPC repeats same-named products
-    within one subcategory at different prices, so keying alone misaligns the pairing;
-    matching by occurrence order pairs the nth with the nth.
+    """為每列產生 (row, (識別鍵, 第幾次出現))，須與 docs/app.js 的 buildKeyedMap() 一致。
+    同一子分類內也會重複列出同名商品且價格不同，因此以出現序配對：第 n 筆對第 n 筆。
+    Yield (row, (identity key, nth occurrence)); must match buildKeyedMap() in docs/app.js.
+    The same name also repeats within one subcategory at different prices, so rows are
+    paired by occurrence order: nth with nth.
     """
     seen = {}
     for row in rows:
@@ -174,15 +188,16 @@ def _build_rows(latest: List[Dict[str, str]],
 
         prev_price = prev_prices.get(okey)
         if prev_price is None:
-            status, diff, pct = ("new", None, None) if previous else ("same", None, None)
-        elif price > prev_price:
-            status, diff = "up", price - prev_price
-            pct = diff / prev_price * 100
-        elif price < prev_price:
-            status, diff = "down", price - prev_price
-            pct = diff / prev_price * 100
+            # 沒有前一份快照時一律視為持平，而非全部標成新增
+            # Without a previous snapshot treat everything as unchanged rather than new
+            status = "new" if previous else "same"
+            diff = pct = None
         else:
-            status, diff, pct = "same", 0, 0.0
+            diff = price - prev_price
+            status = "up" if diff > 0 else "down" if diff < 0 else "same"
+            # 前次價格為 0 時漲跌幅無定義，避免除以零
+            # Percentage is undefined when the previous price is 0; avoid dividing by zero
+            pct = diff / prev_price * 100 if prev_price else None
 
         rows.append({
             "name": name,
@@ -210,17 +225,31 @@ def _count_removed(latest: List[Dict[str, str]],
 
 
 def _jsonld(data) -> str:
-    """序列化為 JSON-LD。角括號與 & 改用 \\uXXXX escape，
-    避免商品名稱中的字元提前終止 <script> 區塊（JSON 解析後仍還原為原字元）。
-    Serialize to JSON-LD with angle brackets and & escaped as \\uXXXX, so a product
-    name can't break out of the <script> block. JSON parsing restores them."""
+    """序列化為 JSON-LD，並把 < > & 轉為 \\uXXXX，避免商品名稱提前關閉 <script>。
+    Serialize as JSON-LD, escaping < > & as \\uXXXX so a product name can't close the
+    <script> block early."""
     text = json.dumps(data, ensure_ascii=False, indent=2)
     return (text.replace("<", "\\u003c")
                 .replace(">", "\\u003e")
                 .replace("&", "\\u0026"))
 
 
+def _name_html(name: str) -> Markup:
+    """商品名稱開頭的 ｛型號｝ 加粗、其餘規格降為次要色，方便掃讀；與 docs/app.js 的 nameHtml() 一致。
+    Bold the leading ｛model｝ of a product name and mute the rest for scanning; matches
+    nameHtml() in docs/app.js."""
+    m = MODEL_RE.match(name or "")
+    if not m:
+        return escape(name or "")
+    html = Markup('<span class="model">%s</span>') % m.group(1)
+    if m.group(2):
+        html += Markup(' <span class="spec">%s</span>') % m.group(2)
+    return html
+
+
 def _render_index(env, rows, meta, categories) -> str:
+    """渲染首頁：異動統計、漲跌榜、分類索引、FAQ 與 JSON-LD。
+    Render the homepage: change stats, movers, category index, FAQ and JSON-LD."""
     up = [r for r in rows if r["status"] == "up"]
     down = [r for r in rows if r["status"] == "down"]
     stats = {
@@ -229,7 +258,9 @@ def _render_index(env, rows, meta, categories) -> str:
         "down": len(down),
         "new": sum(1 for r in rows if r["status"] == "new"),
         "removed": meta["removed"],
-        "changed": len(up) + len(down) + sum(1 for r in rows if r["status"] == "new"),
+        # 與比價工具一致：漲、跌、新增、下架都算異動 Same definition as the comparison tool
+        "changed": len(up) + len(down) + sum(1 for r in rows if r["status"] == "new")
+                   + meta["removed"],
     }
 
     dataset_desc = (
@@ -318,6 +349,9 @@ def _render_index(env, rows, meta, categories) -> str:
 
 
 def _render_category(env, cat, rows, meta, categories) -> str:
+    """渲染單一分類頁：價格區間、近期異動、依子分類分組的完整價格表與 JSON-LD。
+    Render one category page: price range, recent movers, the full table grouped by
+    subcategory, and JSON-LD."""
     items = [r for r in rows if r["slug"] == cat["slug"]]
     prices = [r["price"] for r in items]
 
@@ -330,7 +364,14 @@ def _render_category(env, cat, rows, meta, categories) -> str:
     grouped = {}
     for r in items:
         grouped.setdefault(r["subcategory"], []).append(r)
-    subcategories = [{"name": k, "products": v} for k, v in grouped.items()]
+    # has_remark / has_change 讓樣板隱藏整欄空白的備註或較前次欄
+    # has_remark / has_change let the template hide an entirely empty remark or delta column
+    subcategories = [{
+        "name": k,
+        "products": v,
+        "has_remark": any(p["remark"] for p in v),
+        "has_change": any(p["status"] != "same" for p in v),
+    } for k, v in grouped.items()]
 
     url = BASE_URL + "c/" + cat["slug"] + ".html"
     list_desc = "原價屋 %s 的最新報價列表，共 %d 項商品。" % (cat["name"], len(items))
@@ -391,6 +432,8 @@ def _render_category(env, cat, rows, meta, categories) -> str:
 
 
 def _write_sitemap(categories, updated_date: str) -> None:
+    """產生 sitemap.xml：首頁、比價工具與所有分類頁。
+    Emit sitemap.xml covering the homepage, the comparison tool and every category page."""
     urls = [(BASE_URL, "daily", "1.0"), (BASE_URL + "compare.html", "daily", "0.8")]
     urls += [(BASE_URL + "c/" + c["slug"] + ".html", "daily", "0.9") for c in categories]
 
@@ -435,14 +478,11 @@ def _write_robots() -> None:
 
 
 def _write_legacy_redirect() -> None:
-    """保留舊網址 /docs/index.html，轉址到 /compare.html。
-
-    改用 Actions 部署前，比價工具的網址是 /docs/index.html，該網址已被搜尋引擎索引。
-    直接消失會變成 404，因此留一頁 canonical 指向新位置的轉址頁，讓既有排名合併過去。
-    GitHub Pages 無法送 301，只能用 canonical + meta refresh。
-    Keep the old /docs/index.html URL alive, redirecting to /compare.html. That URL is
-    already indexed; dropping it would 404. GitHub Pages can't emit a 301, so this uses
-    canonical + meta refresh to consolidate ranking signals onto the new location.
+    """舊網址 /docs/index.html 已被搜尋引擎索引，留一頁轉址到 /compare.html。
+    GitHub Pages 無法送 301，改用 canonical + meta refresh 讓排名合併到新位置。
+    The old /docs/index.html URL is already indexed, so keep a page redirecting to
+    /compare.html. GitHub Pages can't send a 301; canonical + meta refresh consolidates
+    ranking onto the new location.
     """
     legacy_dir = SITE_DIR / "docs"
     legacy_dir.mkdir(parents=True, exist_ok=True)
@@ -530,6 +570,7 @@ def build(args) -> None:
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    env.filters["name_html"] = _name_html
 
     (SITE_DIR / "index.html").write_text(
         _render_index(env, rows, meta, categories), encoding="utf-8")
@@ -556,15 +597,12 @@ def build(args) -> None:
 
 def _copy_snapshots(history: List[Dict[str, str]], newest: datetime,
                     data_months: int) -> None:
-    """複製 CSV 快照到 _site/output/，供比價工具讀取。
-
-    data_months > 0 時只發布最近 N 個月的快照，並同步裁切 crawl_history.json，
-    避免比價工具的下拉選單指向未發布的檔案而 404。
-    repo 內的 output/ 一律保持完整，這裡只決定「對外發布哪些」。
+    """複製 CSV 快照到 _site/output/ 供比價工具讀取。data_months > 0 時只發布最近 N 個月
+    （以 30 天計）並同步裁切 _site/crawl_history.json，避免下拉選單指向未發布的檔案；
+    repo 的 output/ 不動。
     Copy CSV snapshots into _site/output/ for the comparison tool. With data_months > 0
-    only the last N months are published, and crawl_history.json is trimmed to match so
-    the tool's dropdown never points at a file that wasn't deployed. The repo's output/
-    is always left intact; this only controls what gets published.
+    publish only the last N months (30 days each) and trim _site/crawl_history.json to
+    match so the dropdown never points at an undeployed file; the repo's output/ is untouched.
     """
     dest = SITE_DIR / "output"
     dest.mkdir(parents=True, exist_ok=True)

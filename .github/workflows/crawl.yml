@@ -49,10 +49,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      # uv 依 .python-version (pypy@3.9) 自行下載解譯器並建立 venv，
-      # 故不需 actions/setup-python（先前裝的 CPython 完全沒被用到，純屬空轉）
-      # uv downloads the interpreter per .python-version (pypy@3.9) and creates the venv itself,
-      # so actions/setup-python is unnecessary (the CPython it installed was never used)
+      # uv 依 .python-version 自行下載 PyPy 3.9 並建立 venv，不需 actions/setup-python
+      # uv downloads PyPy 3.9 per .python-version and creates the venv; no actions/setup-python needed
       - name: Install dependencies
         run: uv sync
 

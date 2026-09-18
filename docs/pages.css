@@ -69,7 +69,7 @@ summary:focus-visible {
 }
 
 .cat-nav-inner a.active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-light);
   border-color: rgba(184, 115, 51, 0.4);
 }
@@ -111,10 +111,9 @@ summary:focus-visible {
 }
 
 /* ── 導言 Intro copy ──
-   行寬與下方表格切齊（由 .page-main 的 1400px 容器決定），不另設 max-width。
-   行變長後眼睛回到行首較容易跳行，因此把行高一併調高補償。
-   Intro text spans the same width as the tables below (bounded by .page-main's 1400px
-   container). Longer lines are harder to track back to, so line-height goes up. */
+   段落限寬約 48 個中文字，桌機 1400px 容器下整行約 84 字太長不易閱讀；表格仍佔滿容器。
+   Paragraphs cap at about 48 CJK characters per line; a full 1400px line is ~84 characters
+   and hard to track. Tables still span the container. */
 .page-intro {
   margin-bottom: 32px;
 }
@@ -129,6 +128,7 @@ summary:focus-visible {
 }
 
 .page-intro p {
+  max-width: 780px;
   font-size: 14.5px;
   line-height: 1.9;
   color: var(--text-secondary);
@@ -290,7 +290,7 @@ summary:focus-visible {
 }
 
 .sub-count {
-  font-size: 11.5px;
+  font-size: 12px;
   font-family: var(--font-mono);
   font-weight: 400;
   color: var(--text-muted);
@@ -340,7 +340,7 @@ summary:focus-visible {
 .cat-card-meta {
   display: flex;
   gap: 10px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
@@ -413,7 +413,8 @@ summary:focus-visible {
   gap: 6px;
 }
 
-.cat-links a {
+.cat-links a,
+.sub-index a {
   font-size: 12px;
   padding: 5px 11px;
   background: var(--surface);
@@ -425,14 +426,40 @@ summary:focus-visible {
   transition: border-color 0.15s, color 0.15s;
 }
 
-.cat-links a:hover {
+.cat-links a:hover,
+.sub-index a:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
+/* ── 子分類索引 Subcategory index ── */
+.sub-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 22px;
+}
+
+.sub-index .sub-count {
+  margin-left: 5px;
+}
+
+/* 錨點跳轉時避開 sticky 頁首 Offset anchor jumps for the sticky header */
+.sub-block {
+  scroll-margin-top: 90px;
+}
+
+/* 整個子分類都沒有備註或異動時，整欄隱藏 Hide a column when the whole subcategory has nothing in it */
+.price-table.no-remark .th-remark,
+.price-table.no-remark .td-remark,
+.price-table.no-change .th-diff,
+.price-table.no-change .td-diff {
+  display: none;
+}
+
 /* ── 頁尾補充 Footer note ── */
 .footer-note {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
   line-height: 1.7;
   max-width: 76ch;
@@ -474,11 +501,9 @@ summary:focus-visible {
   .page-intro .lede { font-size: 15px; }
   .page-main { padding: 22px 16px 56px; }
 
-  /* 手機上 30 個 chip 換行會疊到 7 列、吃掉四分之一首屏，改為單列橫向捲動。
-     捲軸隱藏、右緣以漸層暗示可捲，符合行動裝置的分頁列慣例。
-     Wrapping 30 chips costs 7 rows on a phone; switch to a single scrolling row with
-     the scrollbar hidden and a gradient hinting at more content. */
-  .cat-nav { position: relative; }
+  /* 手機上 30 個 chip 換行會疊到 7 列、吃掉四分之一首屏，改為單列橫向捲動、捲軸隱藏。
+     Wrapping 30 chips costs 7 rows on a phone; switch to a single scrolling row with the
+     scrollbar hidden. */
   .cat-nav-inner {
     padding: 8px 16px;
     flex-wrap: nowrap;
@@ -488,28 +513,74 @@ summary:focus-visible {
     -webkit-overflow-scrolling: touch;
   }
   .cat-nav-inner::-webkit-scrollbar { display: none; }
-  .cat-nav-inner a { flex: 0 0 auto; }
-  .cat-nav-inner a.nav-tool { margin-left: 8px; }
-  .cat-nav::after {
-    content: "";
-    position: absolute;
-    top: 0;
+  .cat-nav-inner a { flex: 0 0 auto; padding: 8px 12px; }
+  /* 比價工具連結釘在捲動列右緣，任何捲動位置都看得到；左側陰影暗示還有更多分類
+     Pin the tool link to the right edge of the scrolling row so it's always visible;
+     the left shadow hints at more chips */
+  .cat-nav-inner a.nav-tool {
+    position: sticky;
     right: 0;
-    bottom: 0;
-    width: 36px;
-    background: linear-gradient(to right, rgba(20, 25, 39, 0), var(--surface));
-    pointer-events: none;
+    z-index: 2;
+    margin-left: 8px;
+    background: var(--surface);
+    box-shadow: -14px 0 12px -6px var(--surface), 16px 0 0 var(--surface);
   }
+  .cat-links a,
+  .sub-index a { padding: 8px 12px; }
   .tool-intro { padding: 18px 16px 2px; }
   .cat-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-  .page-main .compare-table .td-name { max-width: 260px; }
-  /* 靜態頁的表格維持真表格＋橫向捲動（卡片式重排是比價工具專用）
-     Static pages keep a real table with horizontal scroll inside its wrapper */
+
+  /* 靜態頁的表格在手機改為卡片式：漲跌表用 flex 換行，價格表用兩欄 grid，不再橫向捲動；
+     表頭隱藏，靠 ::before 標籤補足語意
+     Static-page tables become cards on phones: movers wrap with flex, price lists use a
+     two-column grid, so nothing scrolls sideways; headers hide and ::before labels fill in */
   .page-main .compare-table { font-size: 12.5px; }
+  .page-main .compare-table .td-name { max-width: none; }
+  .page-main .movers-table thead,
+  .page-main .price-table thead { display: none; }
+  .page-main .movers-table tbody th,
+  .page-main .movers-table tbody td,
+  .page-main .price-table tbody th,
+  .page-main .price-table tbody td { border: none; padding: 0; }
+  .page-main .movers-table tbody tr,
+  .page-main .price-table tbody tr {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .page-main .movers-table tbody tr:last-child,
+  .page-main .price-table tbody tr:last-child { border-bottom: none; }
+
+  .page-main .movers-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 3px 10px;
+  }
+  .page-main .movers-table .td-name { flex: 1 0 100%; }
+  .page-main .movers-table .td-cat { flex: 1 0 100%; font-size: 12px; }
+  .page-main .movers-table .td-prev { color: var(--text-muted); text-decoration: line-through; }
+  .page-main .movers-table .td-cur::before { content: "→ "; color: var(--text-muted); font-family: var(--font-sans); }
+  .page-main .movers-table .td-diff { margin-left: auto; }
+
+  .page-main .price-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+  }
+  .page-main .price-table .td-name { grid-column: 1; grid-row: 1; }
+  .page-main .price-table .td-price { grid-column: 2; grid-row: 1; }
+  .page-main .price-table .td-diff { grid-column: 2; grid-row: 2; text-align: right; font-size: 12px; }
+  .page-main .price-table .td-diff.same { display: none; }
+  .page-main .price-table .td-remark { grid-column: 1; grid-row: 2; font-size: 12px; white-space: normal; }
+  .page-main .price-table .td-remark:empty { display: none; }
 }
 
 @media (max-width: 480px) {
   .page-intro h1 { font-size: 21px; }
-  .cat-grid { grid-template-columns: 1fr; }
-  .page-main .compare-table .td-name { max-width: 190px; }
+  /* 30 張分類卡片單欄要捲 3,300px，改兩欄並收起說明文字
+     30 single-column cards cost 3,300px of scrolling; use two columns and drop the blurb */
+  .cat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cat-card { padding: 12px; }
+  .cat-card h3 { font-size: 13.5px; }
+  .cat-card-blurb { display: none; }
 }

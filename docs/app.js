@@ -1,7 +1,7 @@
 // ── 狀態 State ──
 let dataA = [];
 let dataB = [];
-let showAll = true;
+let showAll = false;
 let compareResults = [];
 let historyEntries = [];
 
@@ -66,8 +66,8 @@ function formatPrice(price) {
 // 格式化價差 Format price difference with sign
 function formatDiff(diff) {
   if (diff === 0) return '0';
-  const sign = diff > 0 ? '+' : '';
-  return sign + '$' + diff.toLocaleString();
+  const sign = diff > 0 ? '+' : '-';
+  return sign + '$' + Math.abs(diff).toLocaleString();
 }
 
 // 格式化漲跌幅百分比 Format percentage change
@@ -237,20 +237,20 @@ async function runComparison() {
   }
 }
 
-// 商品識別鍵。原價屋有同名但屬於不同子分類的商品（例如同型號螢幕同時列在
-// 27 吋與 32 吋區塊，價差達 7 倍），單用 name 比對會互相覆蓋而產生假漲跌。
-// Product identity key. CoolPC lists same-named products under different
-// subcategories (e.g. one monitor model under both the 27" and 32" blocks, 7x apart
-// in price); keying on name alone lets them overwrite each other and fabricates swings.
+// 商品識別鍵，須與 crawler/builder.py 的 _row_key() 一致。同名商品會列在不同子分類
+// （同型號螢幕分列 27 吋與 32 吋區塊，價差 7 倍），只用 name 會互相覆蓋產生假漲跌。
+// Product identity key; must match _row_key() in crawler/builder.py. The same name appears
+// under different subcategories (7x apart in price), so name alone would collide.
 function rowKey(row) {
   return (row.category || '') + ' ' + (row.subcategory || '') + ' ' + row.name;
 }
 
-// 以「識別鍵 + 該鍵的第幾次出現」建表。原價屋在同一子分類內也會重複列出同名商品
-// 且價格不同（例如同型號螢幕同時掛 $6,399 與 $19,988），只用識別鍵會讓後者覆蓋
-// 前者、配對錯位；改以出現序配對，第 n 筆對第 n 筆。
-// Index by identity key plus its nth occurrence. CoolPC repeats same-named products
-// within one subcategory at different prices, so keying alone misaligns the pairing.
+// 以「識別鍵 + 第幾次出現」建表，須與 crawler/builder.py 的 _occurrence_keys() 一致。
+// 同一子分類內也會重複列出同名商品且價格不同，故以出現序配對：第 n 筆對第 n 筆。
+// 同時把出現過的分類收進 cats。
+// Index by identity key plus nth occurrence; must match _occurrence_keys() in
+// crawler/builder.py. The same name repeats within one subcategory at different prices,
+// so rows pair by occurrence order. Also collects the categories seen into cats.
 function buildKeyedMap(data, cats) {
   const map = new Map();
   const seen = new Map();
@@ -354,6 +354,13 @@ function updateStats() {
   document.getElementById('statRemoved').textContent = r.filter((x) => x.status === 'removed').length;
 }
 
+// 分類顯示順序：主要零組件優先，名單須與 crawler/models.py 的 MAIN_CATEGORIES 一致
+// Category order: main PC components first; keep in sync with MAIN_CATEGORIES in crawler/models.py
+const PRIMARY_CATEGORIES = [
+  '處理器 CPU', '主機板 MB', '記憶體 RAM', '固態硬碟 M.2｜SSD', '2.5/3.5 傳統內接硬碟HDD',
+  '散熱器｜散熱墊｜散熱膏', '封閉式｜開放式水冷', '顯示卡VGA', 'CASE 機殼(+電源)', '電源供應器',
+];
+
 // ── 記錄各分類的摺疊狀態 Track collapsed state per category ──
 const collapsedState = new Map();
 
@@ -381,8 +388,17 @@ function renderGroups() {
     });
   });
 
-  grouped.forEach((items, category) => {
-    const changedCount = items.filter((r) => r.status !== 'same').length;
+  // 主要零組件優先，其餘依異動數遞減 Main components first, the rest by change count
+  const changedOf = (items) => items.filter((r) => r.status !== 'same').length;
+  const rank = (cat) => {
+    const i = PRIMARY_CATEGORIES.indexOf(cat);
+    return i === -1 ? PRIMARY_CATEGORIES.length : i;
+  };
+  const ordered = [...grouped.entries()].sort(([ca, ia], [cb, ib]) =>
+    rank(ca) - rank(cb) || changedOf(ib) - changedOf(ia) || ca.localeCompare(cb));
+
+  ordered.forEach(([category, items]) => {
+    const changedCount = changedOf(items);
     const filteredItems = showAll ? items : items.filter((r) => r.status !== 'same');
 
     const group = document.createElement('div');
@@ -436,7 +452,7 @@ function renderGroups() {
         else if (r.status === 'removed') tr.className = 'row-removed';
 
         tr.innerHTML =
-          '<td class="td-name">' + escapeHtml(r.name) + '</td>' +
+          '<td class="td-name">' + nameHtml(r.name) + '</td>' +
           '<td class="td-remark">' + escapeHtml(r.remark) + '</td>' +
           '<td class="td-price' + (r.priceA == null ? ' empty' : '') + '">' + formatPrice(r.priceA) + '</td>' +
           '<td class="td-price' + (r.priceB == null ? ' empty' : '') + '">' + formatPrice(r.priceB) + '</td>' +
@@ -476,6 +492,17 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// 商品名稱開頭的 ｛型號｝（原價屋用全形括號，半形也接受）加粗、其餘規格降為次要色，
+// 與 crawler/builder.py 的 _name_html() 一致
+// Bold the leading ｛model｝ (CoolPC uses full-width braces; ASCII accepted too) and mute
+// the rest, matching _name_html() in crawler/builder.py
+function nameHtml(name) {
+  const m = /^\s*[{｛]([^}｝]*)[}｝]\s*([\s\S]*)$/.exec(name || '');
+  if (!m) return escapeHtml(name);
+  return '<span class="model">' + escapeHtml(m[1]) + '</span>' +
+    (m[2] ? ' <span class="spec">' + escapeHtml(m[2]) + '</span>' : '');
 }
 
 // ── 全部展開/收合 Expand/Collapse all ──

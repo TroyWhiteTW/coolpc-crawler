@@ -1,4 +1,4 @@
-/* ── Variables ── */
+/* ── 設計變數 Variables ── */
 :root {
   --bg: #0b0f1a;
   --surface: #141927;
@@ -7,14 +7,16 @@
   --border-light: #1e2538;
   --text: #e2e8f0;
   --text-secondary: #8b95a8;
-  --text-muted: #4f5b6e;
+  --text-muted: #78839a;
 
   --header-bg: #060a14;
   --header-text: #e2e8f0;
 
   --accent: #b87333;
   --accent-light: #3d2a14;
-  --accent-hover: #a0622b;
+  --accent-hover: #c98040;
+  /* 深色 accent 底上的文字用色，銅色本身對比不足 Text on dark accent backgrounds; plain copper falls short */
+  --accent-text: #dc9a5e;
 
   --red: #ef4444;
   --red-bg: rgba(239, 68, 68, 0.12);
@@ -36,11 +38,13 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.5);
 
-  --font-sans: 'Noto Sans TC', system-ui, sans-serif;
+  /* 中文用系統字型，省下每頁 1 到 2 MB 的 Noto Sans TC 切片 System CJK fonts; saves 1 to 2 MB of Noto Sans TC slices per page */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei',
+               'Noto Sans CJK TC', 'Noto Sans TC', 'Source Han Sans TC', sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }
 
-/* ── Reset ── */
+/* ── 重置 Reset ── */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -56,7 +60,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Header ── */
+/* ── 頁首 Header ── */
 .site-header {
   background: var(--header-bg);
   border-bottom: 3px solid var(--accent);
@@ -113,7 +117,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ── Controls ── */
+/* ── 控制列 Controls ── */
 .controls-bar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -214,12 +218,12 @@ body {
 .btn-compare {
   padding: 10px 28px;
   background: var(--accent);
-  color: white;
+  color: var(--bg);
   border: none;
   border-radius: var(--radius);
   font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
   display: flex;
@@ -250,7 +254,7 @@ body {
   to   { transform: rotate(360deg); }
 }
 
-/* ── Loading ── */
+/* ── 載入中 Loading ── */
 .loading-overlay {
   display: none;
   flex-direction: column;
@@ -278,7 +282,7 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* ── Stats ── */
+/* ── 統計卡 Stats ── */
 .stats-bar {
   max-width: 1400px;
   margin: 16px auto 0;
@@ -325,7 +329,7 @@ body {
 .stat-new .stat-value { color: var(--orange); }
 .stat-removed .stat-value { color: var(--text-muted); }
 
-/* ── Mode notice ── */
+/* ── 模式提示 Mode notice ── */
 .mode-notice {
   max-width: 1400px;
   margin: 12px auto 0;
@@ -341,7 +345,7 @@ body {
   color: var(--orange);
 }
 
-/* ── View bar ── */
+/* ── 檢視列 View bar ── */
 .view-bar {
   max-width: 1400px;
   margin: 12px auto 0;
@@ -359,7 +363,7 @@ body {
 .toggle-text-short { display: none; }
 
 
-/* ── Category groups ── */
+/* ── 分類群組 Category groups ── */
 .groups-section {
   max-width: 1400px;
   margin: 12px auto 0;
@@ -422,7 +426,7 @@ body {
 
 .category-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 10px;
   background: var(--border);
@@ -431,7 +435,7 @@ body {
 
 .category-count.has-changes {
   background: var(--accent);
-  color: white;
+  color: var(--bg);
 }
 
 .category-body {
@@ -495,7 +499,7 @@ body {
   transform: translateX(18px);
 }
 
-/* ── Table ── */
+/* ── 資料表 Table ── */
 .table-scroll {
   overflow-x: auto;
 }
@@ -522,7 +526,7 @@ body {
   border-right: 1px solid var(--border);
   padding: 7px 12px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -546,7 +550,7 @@ body {
   text-align: left;
 }
 
-/* 欄位寬度 Column widths — auto layout, only constrain non-text columns */
+/* 欄位寬度：自動版面，只限制非文字欄 Column widths: auto layout, only constrain non-text columns */
 .th-name { white-space: nowrap; }
 .th-remark { white-space: nowrap; }
 .th-price { white-space: nowrap; }
@@ -587,6 +591,11 @@ body {
   text-align: left;
   word-break: break-word;
 }
+
+/* 商品名稱開頭的 ｛型號｝ 加粗、其餘規格降為次要色，方便掃讀
+   Bold the leading ｛model｝ in product names and mute the rest for scanning */
+.td-name .model { font-weight: 600; color: #f1f5f9; }
+.td-name .spec { color: var(--text-secondary); }
 
 .td-price {
   font-family: var(--font-mono);
@@ -681,7 +690,7 @@ body {
 .row-new { background: rgba(96, 165, 250, 0.05); }
 .row-removed { background: rgba(251, 146, 60, 0.05); }
 
-/* ── Empty state ── */
+/* ── 空狀態 Empty state ── */
 .group-empty {
   text-align: center;
   padding: 20px;
@@ -689,7 +698,7 @@ body {
   font-size: 13px;
 }
 
-/* ── Footer ── */
+/* ── 頁尾 Footer ── */
 .site-footer {
   text-align: center;
   padding: 24px;
@@ -708,7 +717,7 @@ body {
   text-decoration: underline;
 }
 
-/* ── Responsive ── */
+/* ── 響應式 Responsive ── */
 @media (max-width: 768px) {
   .header-inner { padding: 12px 16px; }
   .brand-title { font-size: 17px; }
@@ -754,7 +763,7 @@ body {
   }
   .stat-card { padding: 12px 8px; }
   .stat-value { font-size: 20px; }
-  .stat-label { font-size: 11px; }
+  .stat-label { font-size: 12px; }
   .view-bar { padding: 0 16px; }
   .view-bar-inner { align-items: center; }
   .toggle-text-full { display: none; }
@@ -781,7 +790,7 @@ body {
     border: none;
     padding: 0;
   }
-  /* Row 1: name + remark */
+  /* 第 1 列：名稱 + 備註 Row 1: name + remark */
   .main-content .compare-table .td-name {
     grid-column: 1 / 3;
     grid-row: 1;
@@ -802,7 +811,7 @@ body {
   .main-content .compare-table .td-remark:empty {
     display: none;
   }
-  /* Row 2: priceA ··· priceB (分散對齊) */
+  /* 第 2 列：A 價格 ··· B 價格，分散對齊 Row 2: priceA ··· priceB, space-between */
   .main-content .compare-table .td-price {
     font-size: 12px;
   }
@@ -816,11 +825,11 @@ body {
   .main-content .compare-table .td-price:nth-child(4)::before { content: 'B '; }
   .main-content .compare-table .td-price:nth-child(3) { grid-column: 1; grid-row: 2; }
   .main-content .compare-table .td-price:nth-child(4) { grid-column: 3; grid-row: 2; text-align: right; }
-  /* Row 3: diff + pct ··· status (分散對齊、垂直置中) */
+  /* 第 3 列：價差 + 幅度 ··· 狀態，分散對齊、垂直置中 Row 3: diff + pct ··· status, space-between, vertically centered */
   .main-content .compare-table .td-diff { grid-column: 1; grid-row: 3; font-size: 12px; align-self: center; }
   .main-content .compare-table .td-pct { grid-column: 2; grid-row: 3; font-size: 11px; text-align: center; align-self: center; }
   .main-content .compare-table .td-status { grid-column: 3; grid-row: 3; text-align: right; align-self: center; }
-  .badge { font-size: 10px; padding: 2px 8px; }
+  .badge { font-size: 11px; padding: 2px 8px; }
 }
 
 @media (max-width: 480px) {
@@ -830,7 +839,7 @@ body {
   .header-meta { display: none; }
 }
 
-/* ── Animations ── */
+/* ── 動畫 Animations ── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

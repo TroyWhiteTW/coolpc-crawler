@@ -12,7 +12,7 @@
   {# 允許搜尋引擎與 AI 摘要完整取用內容 Allow full snippet extraction for search and AI summaries #}
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
-  <!-- Open Graph -->
+  <!-- Open Graph 分享標籤 Open Graph tags -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{ page_title }}">
   <meta property="og:description" content="{{ description }}">
@@ -24,15 +24,18 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="原價屋價格追蹤 — CoolPC Price Tracker">
 
-  <!-- Twitter -->
+  <!-- Twitter 卡片 Twitter card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ description }}">
   <meta name="twitter:image" content="{{ base_url }}og-image.png">
 
+  {# 中文字型改用系統字型，只載入數字用的等寬字：Noto Sans TC 切片每頁要 1 到 2 MB
+     Chinese text uses system fonts; only the mono face for figures is downloaded, since
+     Noto Sans TC slices cost 1 to 2 MB per page #}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ root }}style.css">
   <link rel="stylesheet" href="{{ root }}pages.css">
 
@@ -80,6 +83,19 @@
   <p>coolpc-crawler &middot; 資料來源：<a href="https://www.coolpc.com.tw/evaluate.php" target="_blank" rel="noopener nofollow">原價屋線上估價</a> &middot; <a href="https://github.com/TroyWhiteTW/coolpc-crawler" target="_blank" rel="noopener">GitHub</a></p>
   <p class="footer-note">本站為非官方的開源價格記錄工具，與原價屋（欣亞數位）無任何隸屬關係。價格僅供參考，實際售價與供貨狀況請以原價屋官方網站為準。</p>
 </footer>
+
+{# 手機導覽列為橫向捲動，載入時把目前分類捲到列中央；只改 scrollLeft，不影響頁面垂直位置
+   The nav scrolls horizontally on phones; center the active chip on load by setting
+   scrollLeft only, so the page's vertical position is untouched #}
+<script>
+  (function () {
+    var a = document.querySelector('.cat-nav-inner a.active');
+    var n = a && a.parentNode;
+    if (n && n.scrollWidth > n.clientWidth) {
+      n.scrollLeft = a.offsetLeft - (n.clientWidth - a.offsetWidth) / 2;
+    }
+  })();
+</script>
 
 {# Analytics 置於文件尾端，避免阻塞首屏渲染 Analytics at end of body to avoid blocking first paint #}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>

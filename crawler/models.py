@@ -1,19 +1,20 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set
 
-# 網頁上 select name 對應的主要 PC 零組件分類
-# Mapping of select element names to main PC component categories
+# 預設（MAIN 模式）抓取的 select name；value 是原價屋頁面上的分類名稱，僅供對照，程式只用 key
+# Select names scraped by default (MAIN mode); values are CoolPC's category labels for
+# reference only, the code uses just the keys
 MAIN_CATEGORIES: Dict[str, str] = {
     "n4": "處理器 CPU",
     "n5": "主機板 MB",
     "n6": "記憶體 RAM",
-    "n7": "固態硬碟 M.2/SSD",
-    "n8": "傳統硬碟 HDD",
-    "n10": "散熱器",
-    "n11": "水冷",
-    "n12": "顯示卡 VGA",
-    "n14": "機殼 CASE",
-    "n15": "電源供應器 PSU",
+    "n7": "固態硬碟 M.2｜SSD",
+    "n8": "2.5/3.5 傳統內接硬碟HDD",
+    "n10": "散熱器｜散熱墊｜散熱膏",
+    "n11": "封閉式｜開放式水冷",
+    "n12": "顯示卡VGA",
+    "n14": "CASE 機殼(+電源)",
+    "n15": "電源供應器",
 }
 
 
@@ -31,7 +32,9 @@ class Product:
     subcategory: str
     name: str
     price: int
-    remark: str  # 例如: 現貨、訂、客訂、限組裝，空字串表示無特殊標記 e.g. "搭機價", "客訂", "限組裝"; empty string if none
+    # 備註標記（搭機價、客訂、限組裝等），多個以 / 串接，無則為空字串
+    # Remark tags (搭機價, 客訂, 限組裝, ...) joined by "/"; empty string when none
+    remark: str
 
 
 # CSV category 欄位（網站原始分類名）對應的 URL slug，用於靜態分類頁 /c/<slug>.html

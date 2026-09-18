@@ -11,7 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
-  <!-- Open Graph -->
+  <!-- Open Graph 分享標籤 Open Graph tags -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="歷史比價工具 — 原價屋價格追蹤">
   <meta property="og:description" content="選擇任意兩個時間點的快照，比對原價屋電腦零組件的漲跌變化。開源免費，每日自動更新。">
@@ -22,7 +22,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
 
-  <!-- Twitter -->
+  <!-- Twitter 卡片 Twitter card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="歷史比價工具 — 原價屋價格追蹤">
   <meta name="twitter:description" content="選擇任意兩個時間點的快照，比對原價屋電腦零組件的漲跌變化。">
@@ -30,14 +30,15 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <!-- 中文字型改用系統字型，只載入數字用的等寬字 Chinese text uses system fonts; only the mono face is downloaded -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="pages.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- 頁首 Header -->
   <header class="site-header">
     <div class="header-inner">
       <a class="header-brand" href="index.html">
@@ -70,7 +71,7 @@
     <p>選擇任意兩個時間點的價格快照，即可比對該期間內所有商品的漲跌幅度、新上架與下架情況。資料每日自動更新 5 次。</p>
   </div>
 
-  <!-- Controls -->
+  <!-- 快照選擇器 Snapshot selectors -->
   <section class="controls-bar">
     <div class="controls-inner">
       <div class="selector-group">
@@ -112,16 +113,16 @@
     </div>
   </section>
 
-  <!-- Loading -->
+  <!-- 載入中 Loading -->
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
     <p>載入資料中…</p>
   </div>
 
-  <!-- Main content -->
+  <!-- 主要內容 Main content -->
   <main class="main-content" id="mainContent" style="display:none;">
 
-    <!-- Stats -->
+    <!-- 統計卡 Stats -->
     <section class="stats-bar">
       <div class="stat-card">
         <div class="stat-value" id="statTotal">0</div>
@@ -149,14 +150,14 @@
       </div>
     </section>
 
-    <!-- Mode mismatch notice -->
+    <!-- MAIN/ALL 模式不一致提示 Mode mismatch notice -->
     <div class="mode-notice" id="modeNotice" style="display:none;"></div>
 
-    <!-- View toggle -->
+    <!-- 檢視切換 View toggle -->
     <section class="view-bar">
       <div class="view-bar-inner">
         <label class="toggle-label toggle-chip">
-          <input type="checkbox" id="toggleAll" checked>
+          <input type="checkbox" id="toggleAll">
           <span class="toggle-switch"></span>
           <span class="toggle-text-full">顯示所有商品（含無異動）</span>
           <span class="toggle-text-short">顯示全部</span>
@@ -169,11 +170,11 @@
       </div>
     </section>
 
-    <!-- Category groups -->
+    <!-- 分類群組 Category groups -->
     <section class="groups-section" id="groupsSection"></section>
   </main>
 
-  <!-- Footer -->
+  <!-- 頁尾 Footer -->
   <footer class="site-footer">
     <p>coolpc-crawler &middot; 資料來源：<a href="https://www.coolpc.com.tw/evaluate.php" target="_blank" rel="noopener nofollow">原價屋線上估價</a> &middot; <a href="https://github.com/TroyWhiteTW/coolpc-crawler" target="_blank" rel="noopener">GitHub</a></p>
     <p class="footer-note">本站為非官方的開源價格記錄工具，與原價屋（欣亞數位）無任何隸屬關係。價格僅供參考，實際售價與供貨狀況請以原價屋官方網站為準。</p>
@@ -182,7 +183,7 @@
   <!-- defer 確保 PapaParse 先於 app.js 執行 defer keeps PapaParse ahead of app.js -->
   <script src="app.js" defer></script>
 
-  <!-- Analytics 置於文件尾端，避免阻塞首屏渲染 -->
+  <!-- Analytics 置於文件尾端，避免阻塞首屏渲染 Analytics at end of body to avoid blocking first paint -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4SB0FDBZ1K"></script>
   <script>
     window.dataLayer = window.dataLayer || [];

@@ -131,20 +131,22 @@ def main():
     parser = argparse.ArgumentParser(description="CoolPC product price crawler")
     subparsers = parser.add_subparsers(dest="command")
 
-    # crawl 子命令：抓取商品資料並輸出 CSV
+    # crawl：抓取商品並輸出 CSV / crawl: fetch products and export CSV
     crawl_parser = subparsers.add_parser("crawl", help="Fetch products and export CSV")
-    # --all: 抓取全部 30 個分類（預設只抓主要零組件）
+    # --all：抓全部 30 個分類，預設只抓 MAIN_CATEGORIES
+    # --all: all 30 categories; default is MAIN_CATEGORIES only
     crawl_parser.add_argument("--all", action="store_true",
                               help="Fetch all 30 categories (default: main components only)")
-    # -o: 指定 CSV 輸出路徑
+    # -o：自訂 CSV 路徑，此時不更新爬取歷史 / -o: custom CSV path, crawl history is not updated
     crawl_parser.add_argument("-o", "--output", help="Output CSV path")
 
-    # build 子命令：由最新 CSV 產生可被索引的靜態頁面
+    # build：由最新快照產生靜態站到 _site/ / build: generate the static site into _site/
     build_parser = subparsers.add_parser("build", help="Generate static site into _site/")
-    # --with-data: 一併複製 CSV 快照，供比價工具在部署後讀取
+    # --with-data：一併複製 CSV 快照供比價工具讀取 / --with-data: also copy CSV snapshots for the tool
     build_parser.add_argument("--with-data", action="store_true",
                               help="Copy output/ CSV snapshots into _site/output/")
-    # --data-months: 只發布最近 N 個月的快照（0 = 全部）。repo 的 output/ 不受影響
+    # --data-months：只發布最近 N 個月（0 = 全部），需搭配 --with-data，repo 的 output/ 不受影響
+    # --data-months: publish only the last N months (0 = all), requires --with-data; output/ is untouched
     build_parser.add_argument("--data-months", type=int, default=0, metavar="N",
                               help="Publish only the last N months of snapshots "
                                    "(0 = all; the repo's output/ is never modified)")
