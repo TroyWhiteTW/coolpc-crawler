@@ -584,7 +584,9 @@ def build(args) -> None:
 
     # 複製既有前端資源 Copy existing frontend assets
     for asset in ("compare.html", "app.js", "theme.js", "style.css", "pages.css",
-                  "crawl_history.json", "og-image.png", "favicon.svg"):
+                  "crawl_history.json", "og-image.png", "favicon.svg",
+                  # Google Search Console 擁有權驗證檔，須永久保留 / GSC ownership file; must stay
+                  "google3ab1c026866ab483.html"):
         src = DOCS_DIR / asset
         if src.exists():
             shutil.copy2(src, SITE_DIR / asset)
