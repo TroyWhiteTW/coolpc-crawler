@@ -54,25 +54,49 @@
 </section>
 {% endif %}
 
-<section class="full-list">
+<section class="full-list" id="price-list">
   <h2>{{ category.name }} 完整價格表</h2>
-  {% if subcategories|length > 1 %}
-  {# 子分類跳轉索引：長頁面（螢幕分類有 38 個子分類）不必一路捲到底
-     Jump links so long pages (the monitor category has 38 subcategories) don't need endless scrolling #}
-  <nav class="sub-index" aria-label="子分類索引">
-    {% for sub in subcategories %}
-    <a href="#sub-{{ loop.index }}">{{ sub.name }}<span class="sub-count">{{ sub.products|length }}</span></a>
-    {% endfor %}
-  </nav>
+  {% if sub_note %}
+  <p class="section-note">子分類名稱中重複的註記{{ sub_note }}已省略。</p>
   {% endif %}
+  <div class="list-tools">
+    {# 篩選框需要 JS（pages.js），預設隱藏，由下方的 inline script 在首次繪製前顯示
+       The filter needs JS (pages.js); it starts hidden and the inline script below reveals it before first paint #}
+    <div class="list-filter" hidden>
+      <label class="sr-only" for="list-filter-input">篩選{{ category.name }}商品</label>
+      <input type="search" id="list-filter-input" placeholder="輸入型號、規格或子分類篩選" autocomplete="off" enterkeyhint="search">
+      <p class="filter-status" role="status" aria-live="polite"></p>
+    </div>
+    {% if subcategories|length > 1 %}
+    {# 子分類跳轉索引：長頁面（螢幕分類有 39 個子分類）不必一路捲到底
+       Jump links so long pages (the monitor category has 39 subcategories) don't need endless scrolling #}
+    <details class="sub-index" open>
+      <summary>子分類索引<span class="sub-count">{{ subcategories|length }}</span></summary>
+      <nav class="sub-index-links" aria-label="子分類索引">
+        {% for sub in subcategories %}
+        <a href="#sub-{{ loop.index }}">{{ sub.label }}<span class="sub-count">{{ sub.products|length }}</span></a>
+        {% endfor %}
+      </nav>
+    </details>
+    {% endif %}
+  </div>
+  {# 首次繪製前執行，避免版面跳動：有 JS 才顯示篩選框；手機上 39 個索引連結會疊到兩個螢幕高，預設收合
+     Runs before first paint so nothing shifts: reveal the filter only when JS runs, and collapse
+     the index on phones, where 39 links stack two screens tall #}
+  <script>{
+    const tools = document.currentScript.previousElementSibling;
+    tools.querySelector('.list-filter').hidden = false;
+    const index = tools.querySelector('.sub-index');
+    if (index && matchMedia('(max-width: 768px)').matches) index.open = false;
+  }</script>
   {% for sub in subcategories %}
   <div class="sub-block" id="sub-{{ loop.index }}">
-    <h3>{{ sub.name }}<span class="sub-count">{{ sub.products|length }} 項</span></h3>
+    <h3>{{ sub.label }}<span class="sub-count">{{ sub.products|length }} 項</span></h3>
     <div class="table-scroll">
       {# 整個子分類都沒有備註或異動時，加上 no-remark / no-change 讓 CSS 隱藏整欄
          Flag subcategories with no remarks or no changes so CSS can hide the whole column #}
       <table class="compare-table price-table{% if not sub.has_remark %} no-remark{% endif %}{% if not sub.has_change %} no-change{% endif %}">
-        <caption class="sr-only">{{ category.name }} — {{ sub.name }} 商品價格表</caption>
+        <caption class="sr-only">{{ category.name }} — {{ sub.label }} 商品價格表</caption>
         <thead>
           <tr>
             <th scope="col" class="th-name">商品名稱</th>
@@ -100,6 +124,9 @@
     </div>
   </div>
   {% endfor %}
+  {# 捲過篩選框與索引後才由 pages.js 顯示，點了回到列表頂端
+     pages.js shows this once the filter and index scroll out of view; it jumps back to the list top #}
+  <a class="back-to-list" href="#price-list" hidden aria-label="回到價格表頂端的篩選與子分類索引" title="回到篩選與子分類索引">↑</a>
 </section>
 
 <section class="other-cats">
@@ -111,4 +138,8 @@
   </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ root }}pages.js"></script>
 {% endblock %}

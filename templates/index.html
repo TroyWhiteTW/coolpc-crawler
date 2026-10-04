@@ -27,13 +27,16 @@
   <div class="stat-card stat-removed"><div class="stat-value">{{ stats.removed }}</div><div class="stat-label">下架</div></div>
 </section>
 
-{% if top_down %}
+{# 降價榜與漲價榜共用；每個分類最多列 movers_per_category 項，沒列出的依分類附上連結
+   Shared by the drop and rise tables; each category lists at most movers_per_category rows,
+   and the unlisted ones are summarised per category with links #}
+{% macro movers_section(rows, rest, label, pct_label) %}
 <section class="movers">
-  <h2>近期降價幅度最大的商品</h2>
-  <p class="section-note">比較 {{ compare_from_display }} 與 {{ updated_display }} 兩份快照，依降價幅度排序。</p>
+  <h2>近期{{ label }}幅度最大的商品</h2>
+  <p class="section-note">比較 {{ compare_from_display }} 與 {{ updated_display }} 兩份快照，依{{ label }}幅度排序；同一分類最多列 {{ movers_per_category }} 項。</p>
   <div class="table-scroll">
     <table class="compare-table movers-table">
-      <caption class="sr-only">近期降價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與跌幅</caption>
+      <caption class="sr-only">近期{{ label }}幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與{{ pct_label }}</caption>
       <thead>
         <tr>
           <th scope="col" class="th-name">商品名稱</th>
@@ -41,58 +44,33 @@
           <th scope="col" class="th-price">前次價格</th>
           <th scope="col" class="th-price">目前價格</th>
           <th scope="col" class="th-diff">價差</th>
-          <th scope="col" class="th-pct">跌幅</th>
+          <th scope="col" class="th-pct">{{ pct_label }}</th>
         </tr>
       </thead>
       <tbody>
-        {% for p in top_down %}
+        {% for p in rows %}
         <tr>
           <th scope="row" class="td-name">{{ p.name|name_html }}</th>
           <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
           <td class="td-price td-prev">${{ '{:,}'.format(p.prev_price) }}</td>
           <td class="td-price td-cur">${{ '{:,}'.format(p.price) }}</td>
-          <td class="td-diff down">-${{ '{:,}'.format(-p.diff) }}</td>
-          <td class="td-pct down">{{ '%.1f'|format(p.pct) }}%</td>
+          <td class="td-diff {{ p.status }}">{{ '+' if p.diff > 0 else '-' }}${{ '{:,}'.format(p.diff|abs) }}</td>
+          <td class="td-pct {{ p.status }}">{{ '+' if p.diff > 0 else '' }}{{ '%.1f'|format(p.pct) }}%</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  {% if rest %}
+  <p class="movers-rest">其餘{{ label }}商品：
+    {%- for c in rest %}<a href="{{ root }}c/{{ c.slug }}.html">{{ c.name }}</a> {{ c.count }} 項{% if not loop.last %}、{% endif %}{% endfor -%}
+  </p>
+  {% endif %}
 </section>
-{% endif %}
+{% endmacro %}
 
-{% if top_up %}
-<section class="movers">
-  <h2>近期漲價幅度最大的商品</h2>
-  <div class="table-scroll">
-    <table class="compare-table movers-table">
-      <caption class="sr-only">近期漲價幅度最大的商品列表，含商品名稱、分類、前次價格、目前價格與漲幅</caption>
-      <thead>
-        <tr>
-          <th scope="col" class="th-name">商品名稱</th>
-          <th scope="col" class="th-cat">分類</th>
-          <th scope="col" class="th-price">前次價格</th>
-          <th scope="col" class="th-price">目前價格</th>
-          <th scope="col" class="th-diff">價差</th>
-          <th scope="col" class="th-pct">漲幅</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in top_up %}
-        <tr>
-          <th scope="row" class="td-name">{{ p.name|name_html }}</th>
-          <td class="td-cat"><a href="{{ root }}c/{{ p.slug }}.html">{{ p.category }}</a></td>
-          <td class="td-price td-prev">${{ '{:,}'.format(p.prev_price) }}</td>
-          <td class="td-price td-cur">${{ '{:,}'.format(p.price) }}</td>
-          <td class="td-diff up">+${{ '{:,}'.format(p.diff) }}</td>
-          <td class="td-pct up">+{{ '%.1f'|format(p.pct) }}%</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-{% endif %}
+{% if top_down %}{{ movers_section(top_down, down_rest, '降價', '跌幅') }}{% endif %}
+{% if top_up %}{{ movers_section(top_up, up_rest, '漲價', '漲幅') }}{% endif %}
 
 <section class="cat-grid-section">
   <h2>依分類瀏覽價格</h2>

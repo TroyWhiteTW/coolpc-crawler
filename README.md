@@ -120,8 +120,8 @@ debug HTML 位置：`output/debug/coolpc_YYYYMMDD_HHMMSS.html`（時間戳對齊
 
 | 頁面 | 網址 | 說明 |
 |---|---|---|
-| 總覽首頁 | `/` | 最新報價統計、漲跌幅 TOP 20、分類索引、常見問題 |
-| 分類頁 | `/c/<slug>.html` | 單一分類完整價格表，依子分類分組；商品數達 5 項的分類各一頁（目前 30 頁） |
+| 總覽首頁 | `/` | 最新報價統計、漲跌幅 TOP 10（同一分類最多 3 項）、分類索引、常見問題 |
+| 分類頁 | `/c/<slug>.html` | 單一分類完整價格表，依子分類分組，可即時篩選；商品數達 5 項的分類各一頁（目前 30 頁） |
 | 歷史比價工具 | `/compare.html` | 任選兩份快照比對（client-side 渲染的 SPA） |
 
 首頁與分類頁是**建置期產生的靜態 HTML**，商品名稱與價格直接寫在原始碼中，不依賴 JavaScript
@@ -297,8 +297,8 @@ Published via GitHub Pages; `main.py build` regenerates the static pages after e
 
 | Page | URL | Description |
 |---|---|---|
-| Overview | `/` | Latest stats, top 20 movers, category index, FAQ |
-| Category page | `/c/<slug>.html` | Full price table for one category grouped by subcategory; one page per category with at least 5 items (currently 30 pages) |
+| Overview | `/` | Latest stats, top 10 movers (at most 3 per category), category index, FAQ |
+| Category page | `/c/<slug>.html` | Full price table for one category grouped by subcategory, with a live filter; one page per category with at least 5 items (currently 30 pages) |
 | Comparison tool | `/compare.html` | Compare any two snapshots (client-side rendered SPA) |
 
 The homepage and category pages are **static HTML generated at build time**, with product names and prices written directly into the source so search engines and AI crawlers can read them without JavaScript; the comparison tool remains client-side rendered.

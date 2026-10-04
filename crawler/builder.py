@@ -12,6 +12,7 @@ import json
 import re
 import shutil
 import statistics
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -29,7 +30,11 @@ OUTPUT_DIR = Path("output")
 TEMPLATE_DIR = Path("templates")
 
 # 首頁漲跌榜顯示筆數 Number of rows in the homepage movers tables
-TOP_N = 20
+TOP_N = 10
+# 首頁漲跌榜每個分類最多幾筆：同一次批次調價（如整批 Seagate 硬碟）常讓單一分類佔滿整張榜
+# Per-category cap on the homepage movers: one batch repricing (say, every Seagate drive)
+# would otherwise fill the whole table
+MOVERS_PER_CATEGORY = 3
 # 分類頁異動摘要顯示筆數 Number of rows in the per-category movers table
 CAT_MOVERS_N = 15
 # JSON-LD ItemList 收錄上限，避免 structured data 過肥
@@ -48,6 +53,9 @@ BASELINE_MIN_AGE = timedelta(hours=20)
 # 商品名稱開頭的 ｛型號｝，原價屋用全形括號，半形也一併接受
 # Leading ｛model｝ segment of a product name; CoolPC uses full-width braces, ASCII accepted too
 MODEL_RE = re.compile(r"^\s*[{｛]([^}｝]*)[}｝]\s*(.*)$", re.S)
+# 子分類名稱結尾的括號註記，如螢幕的〈亮暗點保固視廠商保固條款而定〉
+# Trailing bracketed note on a subcategory name, e.g. the monitors' warranty disclaimer
+SUB_NOTE_RE = re.compile(r"\s*([〈《（(【『\[][^〈〉《》（）()【】『』\[\]]*[〉》）)】』\]])\s*$")
 
 FAQ = [
     {
@@ -247,6 +255,54 @@ def _name_html(name: str) -> Markup:
     return html
 
 
+def _pick_movers(rows: List[Dict], status: str) -> Tuple[List[Dict], List[Dict]]:
+    """挑出首頁漲跌榜：依幅度排序，每個分類最多 MOVERS_PER_CATEGORY 筆、共 TOP_N 筆；
+    另回傳沒列出的商品依分類統計，讓樣板連到各分類頁。
+    Pick the homepage movers: ranked by magnitude, at most MOVERS_PER_CATEGORY per category
+    and TOP_N in total; also return the unlisted rows counted per category so the template
+    can link to each category page.
+    """
+    ranked = sorted((r for r in rows if r["status"] == status and r["pct"] is not None),
+                    key=lambda r: abs(r["pct"]), reverse=True)
+    picked, per_cat = [], Counter()
+    for r in ranked:
+        if len(picked) == TOP_N:
+            break
+        if per_cat[r["slug"]] < MOVERS_PER_CATEGORY:
+            per_cat[r["slug"]] += 1
+            picked.append(r)
+
+    shown = {id(r) for r in picked}
+    rest = Counter((r["category"], r["slug"]) for r in ranked if id(r) not in shown)
+    return picked, [{"name": name, "slug": slug, "count": n}
+                    for (name, slug), n in rest.most_common()]
+
+
+def _common_sub_note(names: List[str]) -> Optional[str]:
+    """找出過半子分類共用的結尾註記（至少 3 個），樣板只顯示一次。螢幕分類 39 個子分類有
+    28 個以〈亮暗點保固…〉結尾，在索引與標題重複 28 次只是雜訊；(DDR5)、(GDDR7) 這類只出現
+    在少數子分類、具辨識作用的標記不會達到門檻。
+    Find a trailing note shared by at least half the subcategories (and at least 3) so the
+    template shows it once. 28 of the 39 monitor subcategories end in the same warranty note,
+    which is pure noise when repeated in the index and headings; distinguishing tags such as
+    (DDR5) or (GDDR7) only appear on a few subcategories and stay below the threshold.
+    """
+    notes = Counter(m.group(1) for m in map(SUB_NOTE_RE.search, names) if m)
+    if not notes:
+        return None
+    note, n = notes.most_common(1)[0]
+    return note if n >= 3 and n * 2 >= len(names) else None
+
+
+def _strip_sub_note(name: str, note: Optional[str]) -> str:
+    """去掉子分類名稱結尾的共同註記；整個名稱就是註記時保留原文。
+    Drop the shared trailing note from a subcategory name; keep the name if nothing else is left."""
+    m = SUB_NOTE_RE.search(name) if note else None
+    if m and m.group(1) == note and name[:m.start()].strip():
+        return name[:m.start()].rstrip()
+    return name
+
+
 def _render_index(env, rows, meta, categories) -> str:
     """渲染首頁：異動統計、漲跌榜、分類索引、FAQ 與 JSON-LD。
     Render the homepage: change stats, movers, category index, FAQ and JSON-LD."""
@@ -328,6 +384,9 @@ def _render_index(env, rows, meta, categories) -> str:
         % (stats["total"], len(categories))
     )
 
+    top_down, down_rest = _pick_movers(rows, "down")
+    top_up, up_rest = _pick_movers(rows, "up")
+
     return env.get_template("index.html").render(
         page_title="原價屋價格追蹤 — 電腦零組件每日價格與歷史漲跌 | CoolPC Price Tracker",
         description=description,
@@ -338,10 +397,11 @@ def _render_index(env, rows, meta, categories) -> str:
         nav_categories=categories,
         categories=categories,
         stats=stats,
-        top_down=sorted([r for r in down if r["pct"] is not None],
-                        key=lambda r: r["pct"])[:TOP_N],
-        top_up=sorted([r for r in up if r["pct"] is not None],
-                      key=lambda r: r["pct"], reverse=True)[:TOP_N],
+        top_down=top_down,
+        down_rest=down_rest,
+        top_up=top_up,
+        up_rest=up_rest,
+        movers_per_category=MOVERS_PER_CATEGORY,
         faq=FAQ,
         jsonld=_jsonld({"@context": "https://schema.org", "@graph": graph}),
         **meta
@@ -364,10 +424,13 @@ def _render_category(env, cat, rows, meta, categories) -> str:
     grouped = {}
     for r in items:
         grouped.setdefault(r["subcategory"], []).append(r)
-    # has_remark / has_change 讓樣板隱藏整欄空白的備註或較前次欄
-    # has_remark / has_change let the template hide an entirely empty remark or delta column
+    sub_note = _common_sub_note(list(grouped))
+    # has_remark / has_change 讓樣板隱藏整欄空白的備註或較前次欄；label 是去掉共同註記的顯示名稱
+    # has_remark / has_change let the template hide an entirely empty remark or delta column;
+    # label is the display name with the shared note removed
     subcategories = [{
         "name": k,
+        "label": _strip_sub_note(k, sub_note),
         "products": v,
         "has_remark": any(p["remark"] for p in v),
         "has_change": any(p["status"] != "same" for p in v),
@@ -418,6 +481,7 @@ def _render_category(env, cat, rows, meta, categories) -> str:
         items=items,
         movers=movers,
         subcategories=subcategories,
+        sub_note=sub_note,
         price_min=min(prices),
         price_max=max(prices),
         price_median=int(statistics.median(prices)),
@@ -583,7 +647,7 @@ def build(args) -> None:
     _write_legacy_redirect()
 
     # 複製既有前端資源 Copy existing frontend assets
-    for asset in ("compare.html", "app.js", "theme.js", "style.css", "pages.css",
+    for asset in ("compare.html", "app.js", "theme.js", "style.css", "pages.css", "pages.js",
                   "crawl_history.json", "og-image.png", "favicon.svg",
                   # Google Search Console 擁有權驗證檔，須永久保留 / GSC ownership file; must stay
                   "google3ab1c026866ab483.html"):

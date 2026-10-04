@@ -202,12 +202,48 @@ summary:focus-visible {
   line-height: 1.6;
 }
 
+/* 統計卡在 .page-main 裡，取消 style.css 給比價工具用的寬度限制與左右內距，才會與標題、表格對齊
+   Stat cards sit inside .page-main; drop the width cap and side padding style.css gives the
+   comparison tool so they line up with the headings and tables */
+.page-main .stats-bar {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 漲跌榜未列出的商品，依分類附上連結 Unlisted movers, summarised per category with links */
+.movers-rest {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-top: 10px;
+}
+
+.movers-rest a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.movers-rest a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 /* ── 資料表微調 Data table refinements ── */
 .table-scroll {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* 篩選後最後一個可見列不一定是 :last-child，它的底線會和外框疊成兩條；
+   表格下緣 margin 設 -1px，外框因此比表格矮 1px，最後一條底線被 overflow 裁掉
+   After filtering, the last visible row may not be :last-child, so its bottom border doubles
+   up with the frame; a -1px margin lets the frame's overflow clip that last line */
+.page-main .table-scroll > table {
+  margin-bottom: -1px;
 }
 
 /* 靜態頁的表頭不吸附。.table-scroll 因 overflow-x 成為捲動容器，sticky 會相對於
@@ -289,11 +325,15 @@ summary:focus-visible {
   line-height: 1.5;
 }
 
+/* 數量不可斷行、不可被擠壓，否則長標題旁的「29 項」會拆成上下兩行
+   Counts must neither wrap nor shrink, or "29 項" beside a long heading splits over two lines */
 .sub-count {
   font-size: 12px;
   font-family: var(--font-mono);
   font-weight: 400;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── 分類卡片 Category cards ── */
@@ -432,21 +472,134 @@ summary:focus-visible {
   color: var(--accent);
 }
 
+/* ── 價格表篩選 Price-list filter ── */
+.list-filter {
+  margin-bottom: 14px;
+}
+
+.list-filter input {
+  width: 100%;
+  max-width: 420px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.list-filter input::placeholder {
+  color: var(--text-muted);
+}
+
+.list-filter input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.filter-status {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.filter-status:empty {
+  display: none;
+}
+
+/* 篩選與按鈕顯示切換靠 hidden 屬性；手機版表格列設了 display: grid，需強制蓋過
+   Filtering and the button toggle the hidden attribute; phone rows set display: grid, so force it */
+.page-main [hidden] {
+  display: none !important;
+}
+
 /* ── 子分類索引 Subcategory index ── */
 .sub-index {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   margin-bottom: 22px;
 }
 
-.sub-index .sub-count {
+.sub-index summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sub-index summary::-webkit-details-marker {
+  display: none;
+}
+
+.sub-index summary::before {
+  content: "▸";
+  color: var(--accent);
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+
+.sub-index[open] summary {
+  margin-bottom: 8px;
+}
+
+.sub-index[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.sub-index summary:hover {
+  color: var(--text);
+}
+
+.sub-index-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sub-index-links .sub-count {
   margin-left: 5px;
 }
 
 /* 錨點跳轉時避開 sticky 頁首 Offset anchor jumps for the sticky header */
+.full-list,
 .sub-block {
   scroll-margin-top: 90px;
+}
+
+/* ── 回到列表頂端 Back to the list top ── */
+.back-to-list {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 50;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 18px;
+  text-decoration: none;
+  box-shadow: var(--shadow-lg);
+  transition: background 0.15s;
+}
+
+.back-to-list:hover {
+  background: var(--accent-light);
+}
+
+/* 蓋過通用 a:focus-visible 的 3px 圓角，聚焦時維持圓形 Keep the circle on focus despite the generic 3px radius */
+.back-to-list:focus-visible {
+  border-radius: 50%;
 }
 
 /* 整個子分類都沒有備註或異動時，整欄隱藏 Hide a column when the whole subcategory has nothing in it */
@@ -497,9 +650,31 @@ summary:focus-visible {
 }
 
 @media (max-width: 768px) {
+  /* 頁首在手機上固定於頂端，收掉英文副標並縮小圖示，省下垂直空間；
+     副標原本在 style.css 就要隱藏，但被本檔開頭的 display: block 蓋掉
+     The header stays pinned on phones; drop the English subtitle and shrink the icon to save
+     height. style.css already hid the subtitle, but the display: block at the top of this
+     file overrode it */
+  .brand-sub { display: none; }
+  .header-inner { padding: 10px 16px; }
+  .brand-icon { width: 34px; height: 34px; }
+
   .page-intro h1 { font-size: 24px; }
   .page-intro .lede { font-size: 15px; }
   .page-main { padding: 22px 16px 56px; }
+
+  /* 字級 16px 以上 iOS 才不會在聚焦時自動放大 iOS zooms into inputs below 16px on focus */
+  .list-filter input { max-width: none; font-size: 16px; }
+  /* 收合的索引要看起來能點，做成整列按鈕 The collapsed index needs to look tappable: a full-width button */
+  .sub-index summary {
+    display: flex;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 13.5px;
+  }
+  .back-to-list { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
 
   /* 手機上 30 個 chip 換行會疊到 7 列、吃掉四分之一首屏，改為單列橫向捲動、捲軸隱藏。
      Wrapping 30 chips costs 7 rows on a phone; switch to a single scrolling row with the

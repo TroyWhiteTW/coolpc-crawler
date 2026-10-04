@@ -394,14 +394,10 @@ body {
   padding: 12px 16px;
   text-align: center;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.stat-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-
+/* 統計卡不可點，刻意不加 hover 浮起效果，避免看起來像按鈕
+   Stat cards aren't clickable, so there's deliberately no hover lift that would read as a button */
 .stat-value {
   font-family: var(--font-mono);
   font-size: 24px;
@@ -418,11 +414,13 @@ body {
   letter-spacing: 0.5px;
 }
 
-.stat-changed .stat-value { color: var(--blue); }
+/* 與徽章和列底色同一套語意色：漲紅、跌綠、新增藍、下架橘；總數與異動為合計值，維持中性色
+   Same semantic colours as the badges and row tints: up red, down green, new blue, removed
+   orange; the total and changed counts are aggregates and stay neutral */
 .stat-up .stat-value { color: var(--red); }
 .stat-down .stat-value { color: var(--green); }
-.stat-new .stat-value { color: var(--orange); }
-.stat-removed .stat-value { color: var(--text-muted); }
+.stat-new .stat-value { color: var(--blue); }
+.stat-removed .stat-value { color: var(--orange); }
 
 /* ── 模式提示 Mode notice ── */
 .mode-notice {
