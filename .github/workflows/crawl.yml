@@ -44,7 +44,11 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     steps:
+      # 固定取最新的 main；預設會取 run 建立時的 commit，重跑時 push 會被拒絕
+      # Always check out the latest main; the default is the run's original commit, which makes re-run pushes fail
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
